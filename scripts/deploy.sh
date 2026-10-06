@@ -4,19 +4,15 @@
 #
 # Run this on the Raspberry Pi whenever new code is pushed to GitHub.
 # It pulls the latest code, reinstalls dependencies if needed,
-# rebuilds Next.js, and restarts the PM2 process.
+# rebuilds Next.js, and restarts all PM2 processes (web + camera service).
 #
 # Usage (from the project directory on the RPi):
 #   bash scripts/deploy.sh
-#
-# Or from anywhere:
-#   bash ~/palf-vision/scripts/deploy.sh
 # =============================================================================
 
 set -e
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="palf-vision"
 GREEN="\033[0;32m"; YELLOW="\033[1;33m"; NC="\033[0m"
 
 info() { echo -e "${GREEN}[deploy] $*${NC}"; }
@@ -38,19 +34,14 @@ npm install
 info "Building production bundle…"
 npm run build
 
-# ── 4. Restart (or start) PM2 process ────────────────────────────────────────
-if pm2 list | grep -q "$APP_NAME"; then
-  info "Restarting PM2 process '$APP_NAME'…"
-  pm2 restart "$APP_NAME"
-else
-  warn "PM2 process '$APP_NAME' not found — starting fresh…"
-  pm2 start ecosystem.config.js
-fi
-
+# ── 4. Restart or start PM2 processes ────────────────────────────────────────
+info "Updating PM2 processes from ecosystem.config.js…"
+pm2 startOrRestart ecosystem.config.js
 pm2 save
 
 echo ""
 info "=== Deploy complete! ==="
-echo -e "  App URL:   ${GREEN}http://$(hostname -I | awk '{print $1}'):3000${NC}"
-echo -e "  PM2 logs:  ${GREEN}pm2 logs $APP_NAME${NC}"
+echo -e "  App URL:    ${GREEN}http://$(hostname -I | awk '{print $1}'):3000${NC}"
+echo -e "  PM2 status: ${GREEN}pm2 status${NC}"
+echo -e "  PM2 logs:   ${GREEN}pm2 logs${NC}"
 echo ""

@@ -78,6 +78,12 @@ export default function Dashboard(){
   /* ── camera handlers ────────────────────────────────────────── */
   async function openCamera(){
     setCameraErr(null);
+    setPreview(null);
+    if(CAMERA_MODE === "PICAMERA"){
+      setCameraOn(true);
+      setState("ACQUIRING");
+      return;
+    }
     try{
       const stream = await startWebcam(videoRef.current);
       streamRef.current = stream;
@@ -89,8 +95,10 @@ export default function Dashboard(){
   }
 
   function closeCamera(){
-    stopWebcam(streamRef.current);
-    streamRef.current=null;
+    if(streamRef.current){
+      stopWebcam(streamRef.current);
+      streamRef.current=null;
+    }
     setCameraOn(false);
     if(state==="ACQUIRING") setState("IDLE");
   }
@@ -343,21 +351,35 @@ export default function Dashboard(){
               {/* viewport: shows live camera feed OR captured/uploaded image */}
               <div className="aspect-[16/9] bg-[#020617] border border-slate-800 rounded-lg flex items-center justify-center overflow-hidden relative">
 
-                {/* live video feed (shown when camera is open, hidden when not) */}
-                <video
-                  ref={videoRef}
-                  className={`w-full h-full object-contain ${cameraOn?"block":"hidden"}`}
-                  playsInline muted
-                  aria-label="Live camera feed"
-                />
+                {/* PICAMERA live MJPEG stream */}
+                {cameraOn && !preview && CAMERA_MODE === "PICAMERA" && (
+                  <img
+                    src="/api/stream"
+                    alt="Live Raspberry Pi camera feed"
+                    className="w-full h-full object-contain"
+                    onError={() => setCameraErr("Cannot connect to camera stream. Is camera service running?")}
+                  />
+                )}
 
-                {/* static image preview */}
-                {!cameraOn&&preview&&(
-                  <img src={preview} alt="Inspection image" className="w-full h-full object-contain"/>)}
+                {/* WEBCAM live video feed (shown when webcam is open on laptop) */}
+                {CAMERA_MODE === "WEBCAM" && (
+                  <video
+                    ref={videoRef}
+                    className={`w-full h-full object-contain ${cameraOn && !preview ? "block" : "hidden"}`}
+                    playsInline muted
+                    aria-label="Live camera feed"
+                  />
+                )}
+
+                {/* static image preview (uploaded or captured still) */}
+                {preview && (
+                  <img src={preview} alt="Inspection image" className="w-full h-full object-contain"/>
+                )}
 
                 {/* idle placeholder */}
-                {!cameraOn&&!preview&&(
-                  <p className="text-sm text-slate-400">No image acquired</p>)}
+                {!cameraOn && !preview && (
+                  <p className="text-sm text-slate-400">No image acquired</p>
+                )}
 
                 {/* camera mode badge (top-right corner) */}
                 <span className="absolute top-2 right-2 chip border-slate-600 bg-black/60 text-slate-300">

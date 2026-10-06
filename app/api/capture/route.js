@@ -1,21 +1,12 @@
 /**
  * app/api/capture/route.js
  *
- * Next.js App Router API route — runs server-side on the Raspberry Pi.
- * Triggers rpicam-still (Bookworm) or libcamera-still (Bullseye) to
- * capture a JPEG from the RPi Camera Module and returns it as image/jpeg.
+ * Next.js App Router API route — captures a JPEG from the RPi camera.
  *
- * This route runs INSIDE Next.js — no separate Express server needed.
- * PM2 only needs to manage one process (`next start` on port 3000).
- *
- * Enabled when: NEXT_PUBLIC_CAMERA_MODE=PICAMERA in .env.local
- *
- * Prerequisites on RPi OS:
- *   sudo raspi-config → Interface Options → Camera → Enable
- *   rpicam-still is pre-installed on RPi OS Bookworm (64-bit)
- *
- * Test from RPi terminal:
- *   rpicam-still -o /tmp/test.jpg --nopreview -t 200
+ * Strategy:
+ * 1. Fast Path: Queries internal Picamera2 daemon (http://127.0.0.1:5001/capture).
+ *    Captures from memory in < 5ms with zero hardware spin-up latency.
+ * 2. Fallback: If daemon is not running, executes rpicam-still/libcamera-still.
  */
 
 import { NextResponse } from "next/server";
@@ -27,10 +18,6 @@ import os               from "os";
 
 const execAsync = promisify(exec);
 
-/**
- * Detects whether this system uses `rpicam-still` (Bookworm+) or
- * the older `libcamera-still` (Bullseye).  Caches the result.
- */
 let _cameraCmd = null;
 async function getCameraCmd() {
   if (_cameraCmd) return _cameraCmd;
@@ -49,6 +36,30 @@ async function getCameraCmd() {
 }
 
 export async function POST() {
+  // ── Strategy 1: Fast in-memory capture from camera_service.py daemon ───────
+  try {
+    const serviceRes = await fetch("http://127.0.0.1:5001/capture", {
+      signal: AbortSignal.timeout(2000), // 2s max
+      cache: "no-store",
+    });
+
+    if (serviceRes.ok) {
+      const arrayBuffer = await serviceRes.arrayBuffer();
+      return new NextResponse(Buffer.from(arrayBuffer), {
+        status: 200,
+        headers: {
+          "Content-Type": "image/jpeg",
+          "Content-Disposition": "inline",
+          "Cache-Control": "no-store",
+          "X-Capture-Source": "picamera2-daemon",
+        },
+      });
+    }
+  } catch {
+    // Daemon not running or timed out; fall through to standalone command
+  }
+
+  // ── Strategy 2: Standalone rpicam-still fallback ─────────────────────────
   const outputPath = path.join(os.tmpdir(), `palf_${Date.now()}.jpg`);
 
   try {
@@ -56,65 +67,41 @@ export async function POST() {
     if (!cmd) {
       return NextResponse.json(
         {
-          error:  "No camera command found.",
-          detail: "Neither rpicam-still nor libcamera-still is installed.",
-          hint:   "Install with: sudo apt install -y rpicam-apps (Bookworm) or libcamera-apps (Bullseye)",
+          error: "No camera command found.",
+          detail: "Neither camera service on :5001 nor rpicam-still is active.",
+          hint: "Run 'python3 scripts/camera_service.py' or check rpicam-apps installation.",
         },
         { status: 500 }
       );
     }
 
-    // ── Capture a single frame ───────────────────────────────────────────
-    //  --nopreview : headless — no X11 display (required under PM2)
-    //  -t 1        : minimal capture delay in ms (raise to 500+ if images are dark)
-    //  --width / --height : 1280×720; adjust to your IMX219's supported modes
-    //
-    // Your IMX219 supports (from rpicam-hello --list-cameras):
-    //   640x480, 1640x1232, 1920x1080, 3280x2464
     await execAsync(
       `${cmd} --output "${outputPath}" --nopreview -t 1 --width 1280 --height 720`,
-      { timeout: 15_000 }   // 15 s max (first capture after boot can be slow)
+      { timeout: 15_000 }
     );
-
-    // ── OR picamera2 Python fallback (uncomment if rpicam-still has issues) ──
-    // await execAsync(
-    //   `python3 -c "
-    // from picamera2 import Picamera2
-    // cam = Picamera2()
-    // cam.start()
-    // import time; time.sleep(0.5)
-    // cam.capture_file('${outputPath}')
-    // cam.close()
-    // "`,
-    //   { timeout: 15_000 }
-    // );
 
     const buffer = await fs.readFile(outputPath);
 
     return new NextResponse(buffer, {
       status: 200,
       headers: {
-        "Content-Type":        "image/jpeg",
+        "Content-Type": "image/jpeg",
         "Content-Disposition": "inline",
-        "Cache-Control":       "no-store",
+        "Cache-Control": "no-store",
+        "X-Capture-Source": cmd,
       },
     });
 
   } catch (err) {
     console.error("[/api/capture] Error:", err.message);
-
-    // Check for common RPi camera errors and give helpful hints
-    let hint = "Make sure the RPi camera is enabled via raspi-config and the ribbon cable is seated.";
-    if (err.message.includes("Camera is not available"))
-      hint = "Run: sudo raspi-config → Interface Options → Camera → Enable, then reboot.";
-    if (err.message.includes("ENOENT"))
-      hint = "rpicam-still/libcamera-still not found. Run: sudo apt install -y rpicam-apps";
-
     return NextResponse.json(
-      { error: "Camera capture failed.", detail: err.message, hint },
+      {
+        error: "Camera capture failed.",
+        detail: err.message,
+        hint: "Make sure no other process is holding the camera exclusively.",
+      },
       { status: 500 }
     );
-
   } finally {
     await fs.unlink(outputPath).catch(() => {});
   }
