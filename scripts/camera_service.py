@@ -11,7 +11,6 @@ Endpoints:
 Runs internally on 127.0.0.1:5001. Proxied by Next.js /api/stream and /api/capture.
 """
 
-import io
 import sys
 import logging
 from threading import Condition
@@ -21,8 +20,10 @@ from socketserver import ThreadingMixIn
 try:
     from picamera2 import Picamera2
     from picamera2.encoders import JpegEncoder
-except ImportError:
-    print("[ERROR] picamera2 is not installed. Run: sudo apt install -y python3-picamera2")
+    from picamera2.outputs import Output
+except ImportError as err:
+    print(f"[ERROR] Required picamera2 component missing: {err}")
+    print("Run: sudo apt install -y python3-picamera2")
     sys.exit(1)
 
 HOST = "127.0.0.1"
@@ -31,14 +32,19 @@ WIDTH = 1280
 HEIGHT = 720
 FPS = 20
 
-class StreamingOutput(object):
+class StreamingOutput(Output):
+    """
+    Picamera2 Output subclass that receives encoded JPEG frames
+    and notifies listening HTTP streaming threads.
+    """
     def __init__(self):
+        super().__init__()
         self.frame = None
         self.condition = Condition()
 
-    def write(self, buf):
+    def outputframe(self, frame, keyframe=True, timestamp=None):
         with self.condition:
-            self.frame = buf
+            self.frame = bytes(frame)
             self.condition.notify_all()
 
 output = StreamingOutput()
@@ -123,4 +129,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
