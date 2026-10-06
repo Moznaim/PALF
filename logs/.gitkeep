@@ -1,0 +1,2 @@
+# Keep this directory in git so PM2 can write logs here.
+# The actual log files are excluded via .gitignore.

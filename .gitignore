@@ -1,0 +1,36 @@
+# ── Next.js build output ──────────────────────────────────────────
+.next/
+out/
+
+# ── Dependencies ──────────────────────────────────────────────────
+node_modules/
+
+# ── Environment / secrets ─────────────────────────────────────────
+# NEVER commit real env files — only commit .env.example
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ── OS junk ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editor / IDE ──────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Logs ──────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+logs/*.log     # keep logs/ dir via .gitkeep, ignore actual log files
+
+# ── PM2 ───────────────────────────────────────────────────────────
+.pm2/
+
+# ── TypeScript (if added later) ───────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts

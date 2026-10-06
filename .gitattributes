@@ -1,0 +1,5 @@
+# Enforce LF line endings for shell scripts (important for RPi — CRLF breaks bash)
+scripts/*.sh  text  eol=lf
+
+# Everything else: auto-detect
+*             text=auto
