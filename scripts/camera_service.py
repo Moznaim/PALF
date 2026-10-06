@@ -42,7 +42,7 @@ class StreamingOutput(Output):
         self.frame = None
         self.condition = Condition()
 
-    def outputframe(self, frame, keyframe=True, timestamp=None):
+    def outputframe(self, frame, *args, **kwargs):
         with self.condition:
             self.frame = bytes(frame)
             self.condition.notify_all()
