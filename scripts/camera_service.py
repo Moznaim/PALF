@@ -26,7 +26,7 @@ except ImportError as err:
     print("Run: sudo apt install -y python3-picamera2")
     sys.exit(1)
 
-HOST = "127.0.0.1"
+HOST = "0.0.0.0"
 PORT = 5001
 WIDTH = 1280
 HEIGHT = 720
