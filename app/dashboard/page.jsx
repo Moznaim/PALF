@@ -376,6 +376,17 @@ export default function Dashboard(){
                   <img src={preview} alt="Inspection image" className="w-full h-full object-contain"/>
                 )}
 
+                {/* center-crop alignment guide when camera is streaming */}
+                {cameraOn && !preview && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-56 h-56 border-2 border-dashed border-emerald-400/80 rounded-2xl flex items-end justify-center pb-2 bg-emerald-500/5 shadow-sm">
+                      <span className="text-[11px] font-medium text-emerald-200 bg-black/75 px-2 py-0.5 rounded shadow">
+                        Align fiber inside box
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* idle placeholder */}
                 {!cameraOn && !preview && (
                   <p className="text-sm text-slate-400">No image acquired</p>

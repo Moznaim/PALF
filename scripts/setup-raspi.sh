@@ -85,12 +85,14 @@ else
 fi
 
 # ── 10. Check for model checkpoint ───────────────────────────────────────────
-CHECKPOINT="$REPO_DIR/backend/models/efficientnet_b0_attention_best.pt"
-if [ ! -f "$CHECKPOINT" ]; then
-  warn "Checkpoint file not found at: $CHECKPOINT"
-  warn "Please copy 'efficientnet_b0_attention_best.pt' into backend/models/ to enable predictions."
+EFF_CKPT="$REPO_DIR/backend/models/efficientnet_b0_attention_best.pt"
+RES_CKPT="$REPO_DIR/backend/models/resnet50_concat_best.pt"
+if [ ! -f "$EFF_CKPT" ] && [ ! -f "$RES_CKPT" ]; then
+  warn "No model checkpoint found in backend/models/."
+  warn "Please copy 'efficientnet_b0_attention_best.pt' or 'resnet50_concat_best.pt' to backend/models/."
 else
-  info "Found trained checkpoint: $CHECKPOINT"
+  [ -f "$EFF_CKPT" ] && info "Found EfficientNet checkpoint: $EFF_CKPT"
+  [ -f "$RES_CKPT" ] && info "Found ResNet-50 checkpoint: $RES_CKPT"
 fi
 
 # ── 11. Build Next.js ────────────────────────────────────────────────────────

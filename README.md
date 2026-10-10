@@ -209,45 +209,98 @@ python3 -m venv --system-site-packages backend/venv
 backend/venv/bin/pip install -r backend/requirements.txt
 ```
 
-#### 4. Copy the Model Checkpoint
-Transfer `efficientnet_b0_attention_best.pt` to the Pi:
+#### 4. Copy the Model Checkpoints
+Transfer the trained model checkpoint(s) from your laptop to the Raspberry Pi using `scp` (or via a USB drive):
 ```bash
-# Copy to ~/PALF/backend/models/efficientnet_b0_attention_best.pt
+# Run from your laptop terminal (replace <pi-ip> with your Raspberry Pi's IP address):
+scp backend/models/efficientnet_b0_attention_best.pt pi@<pi-ip>:~/PALF/backend/models/
+scp backend/models/resnet50_concat_best.pt pi@<pi-ip>:~/PALF/backend/models/
 ```
+Both models can reside side-by-side in `~/PALF/backend/models/`.
 
 #### 5. Configure `.env.local` on the Pi
 ```bash
 nano .env.local
 ```
-Set:
+Set the Raspberry Pi production settings:
 ```env
+# ── Hardware Camera (Picamera2 daemon via CSI ribbon) ────────────
 NEXT_PUBLIC_CAMERA_MODE=PICAMERA
+
+# ── Moisture Sensor (MOCK or ESP32_SERIAL) ───────────────────────
 NEXT_PUBLIC_DEVICE_MODE=MOCK
+
+# ── AI Classifier (Calls local Python FastAPI backend) ───────────
 NEXT_PUBLIC_MODEL_MODE=PYTORCH
 NEXT_PUBLIC_API_URL=http://localhost:4000
+
+# ── Active AI Model Checkpoint (efficientnet or resnet) ──────────
+MODEL_NAME=resnet
 ```
 
 #### 6. Build and start with PM2
 ```bash
+# Build the Next.js production bundle
 npm run build
+
+# Start all 3 daemon services (frontend, camera service, and PyTorch API)
 pm2 start ecosystem.config.js
 pm2 save
 pm2 startup
 ```
 
-The app will be available on your local network at `http://<raspberry-pi-ip>:3000`.
+The application will be live on your local network:
+- **Web App Dashboard:** `http://<raspberry-pi-ip>:3000`
+- **FastAPI Backend & Swagger UI:** `http://<raspberry-pi-ip>:4000/docs`
+- **Health Check:** `http://<raspberry-pi-ip>:4000/health`
+
+#### 7. Useful PM2 Commands on the Pi
+```bash
+# Check service status (palf-vision, palf-camera, palf-api)
+pm2 status
+
+# View live real-time inference and prediction logs
+pm2 logs palf-api
+
+# Restart the model backend after changing MODEL_NAME in .env.local
+pm2 restart palf-api
+
+# View camera daemon logs
+pm2 logs palf-camera
+```
 
 ---
 
-## Model Checkpoint & Architecture
+## Model Checkpoints & Architecture
 
-* **Architecture:** `EfficientNetAttentionModel` (EfficientNet-B0 + Multihead Attention Fusion)
-* **Weights:** `backend/models/efficientnet_b0_attention_best.pt` (~20.1 MB)
-* **Input 1 (Image):** RGB Image resized to $224 \times 224$, transformed with ImageNet normalization:
+The backend supports modular multimodal architectures combining RGB visual features with ESP32 moisture telemetry:
+
+| Model | File | Size | Val Macro F1 | Best Use Case |
+|---|---|:---:|:---:|---|
+| **ResNet-50 + Concat** | `resnet50_concat_best.pt` | ~96.5 MB | **0.9969** | High feature capacity, robust classification |
+| **EfficientNet-B0 + Attention** | `efficientnet_b0_attention_best.pt` | ~20.1 MB | **0.9918** | Lightweight, fast inference on Raspberry Pi |
+
+### Switching Active Models
+You can switch models at any time **without modifying code**:
+
+1. **Via `.env.local`:**
+   Change `MODEL_NAME=resnet` or `MODEL_NAME=efficientnet`, then run:
+   ```bash
+   pm2 restart palf-api
+   ```
+2. **Via Dynamic API (Zero Downtime):**
+   Send a POST request to switch models live without restarting:
+   ```bash
+   curl -X POST "http://localhost:4000/models/switch" -F "filename=resnet50_concat_best.pt"
+   ```
+   Or visit the interactive Swagger UI at `http://<raspberry-pi-ip>:4000/docs`.
+
+### Input & Output Pipeline Specifications
+* **Input 1 (Image):** RGB image resized to $224 \times 224$, normalized with standard ImageNet statistics:
   * Mean: `[0.485, 0.456, 0.406]`, Std: `[0.229, 0.224, 0.225]`
 * **Input 2 (Moisture):** Scaled using the checkpoint's stored training statistics:
   $$\text{moisture\_norm} = \frac{\text{moisture\_pct} - \mu}{\sigma}$$
-* **Output:** Softmax probabilities over 3 grades:
+* **Output:** Softmax probabilities across 3 target grades:
   * `0`: **Excellent**
   * `1`: **Good**
   * `2`: **Fair**

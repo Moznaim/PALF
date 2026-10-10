@@ -9,6 +9,7 @@ class HealthResponse(BaseModel):
     class_names: List[str] = Field(..., example=["Excellent", "Good", "Fair"])
     best_epoch: Optional[int] = Field(None, example=9)
     best_val_macro_f1: Optional[float] = Field(None, example=0.9918)
+    img_size: Optional[int] = Field(None, example=320)
 
 
 class ClassifyResponse(BaseModel):

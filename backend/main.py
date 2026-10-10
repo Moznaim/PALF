@@ -4,6 +4,14 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict
 
+try:
+    from dotenv import load_dotenv
+    _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    load_dotenv(os.path.join(_root_dir, ".env.local"), override=False)
+    load_dotenv(os.path.join(_root_dir, ".env"), override=False)
+except ImportError:
+    pass
+
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -112,6 +120,7 @@ async def health_check():
         class_names=info["class_names"],
         best_epoch=info.get("best_epoch"),
         best_val_macro_f1=info.get("best_val_macro_f1"),
+        img_size=info.get("img_size"),
     )
 
 
