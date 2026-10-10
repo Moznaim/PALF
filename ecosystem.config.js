@@ -42,8 +42,8 @@ module.exports = {
     },
     {
       name: "palf-camera",
-      script: pythonCmd,
-      args:   "scripts/camera_service.py",
+      script: "scripts/camera_service.py",
+      interpreter: pythonCmd,
       cwd:    "./",
       autorestart:   true,
       watch:         false,
@@ -56,8 +56,8 @@ module.exports = {
     },
     {
       name: "palf-api",
-      script: pythonCmd,
-      args:   "-m uvicorn main:app --app-dir . --host 0.0.0.0 --port 4000",
+      script: "main.py",
+      interpreter: pythonCmd,
       cwd:    "./backend",
       autorestart:   true,
       watch:         false,
