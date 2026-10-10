@@ -37,25 +37,21 @@ def resolve_model_path() -> Optional[str]:
     # 2. Key-based hint
     hint = os.getenv("MODEL_NAME", os.getenv("MODEL_KEY", "")).lower()
     if "resnet" in hint:
-        p = os.path.join(MODELS_DIR, "resnet50_concat_best.pt")
-        if os.path.exists(p):
-            return p
+        res = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
+        if res: return res[0]
     elif "efficientnet" in hint:
-        p = os.path.join(MODELS_DIR, "efficientnet_b0_attention_best.pt")
-        if os.path.exists(p):
-            return p
+        eff = glob.glob(os.path.join(MODELS_DIR, "*efficientnet*.pt"))
+        if eff: return eff[0]
 
-    # 3. Auto-detect priority list
-    candidates = [
-        "resnet50_concat_best.pt",
-        "efficientnet_b0_attention_best.pt",
-    ]
-    for c in candidates:
-        p = os.path.join(MODELS_DIR, c)
-        if os.path.exists(p):
-            return p
+    # 3. Auto-detect priority list (ResNet first, then EfficientNet)
+    resnets = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
+    if resnets:
+        return resnets[0]
+    efficientnets = glob.glob(os.path.join(MODELS_DIR, "*efficientnet*.pt"))
+    if efficientnets:
+        return efficientnets[0]
 
-    # 4. Any .pt file in models directory
+    # 4. Any other .pt file in models directory
     any_pt = glob.glob(os.path.join(MODELS_DIR, "*.pt"))
     if any_pt:
         return any_pt[0]
