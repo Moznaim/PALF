@@ -41,7 +41,8 @@ npm run build
 
 # ── 4. Restart or start PM2 processes ────────────────────────────────────────
 info "Updating PM2 processes from ecosystem.config.js…"
-pm2 startOrRestart ecosystem.config.js
+pm2 delete all 2>/dev/null || true
+pm2 start ecosystem.config.js
 pm2 save
 
 echo ""

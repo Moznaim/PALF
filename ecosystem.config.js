@@ -9,9 +9,11 @@
 const fs = require("fs");
 const path = require("path");
 
-// Use backend virtual environment Python if available, otherwise fall back to system python3
-const venvPythonLinux = path.resolve("./backend/venv/bin/python3");
-const venvPythonWin   = path.resolve("./backend/venv/Scripts/python.exe");
+const ROOT_DIR = __dirname;
+
+// Detect backend virtual environment Python using absolute paths
+const venvPythonLinux = path.join(ROOT_DIR, "backend", "venv", "bin", "python3");
+const venvPythonWin   = path.join(ROOT_DIR, "backend", "venv", "Scripts", "python.exe");
 
 let pythonCmd = "python3";
 if (fs.existsSync(venvPythonLinux)) {
@@ -24,9 +26,9 @@ module.exports = {
   apps: [
     {
       name: "palf-vision",
-      script: "node_modules/.bin/next",
+      script: path.join(ROOT_DIR, "node_modules", ".bin", "next"),
       args:   "start",
-      cwd:    "./",
+      cwd:    ROOT_DIR,
       env: {
         NODE_ENV: "production",
         PORT:     3000,
@@ -35,36 +37,36 @@ module.exports = {
       watch:         false,
       max_restarts:  10,
       restart_delay: 3000,
-      out_file:      "./logs/out.log",
-      error_file:    "./logs/error.log",
+      out_file:      path.join(ROOT_DIR, "logs", "out.log"),
+      error_file:    path.join(ROOT_DIR, "logs", "error.log"),
       merge_logs:    true,
       log_date_format: "YYYY-MM-DD HH:mm:ss",
     },
     {
       name: "palf-camera",
-      script: "scripts/camera_service.py",
+      script: path.join(ROOT_DIR, "scripts", "camera_service.py"),
       interpreter: pythonCmd,
-      cwd:    "./",
+      cwd:    ROOT_DIR,
       autorestart:   true,
       watch:         false,
       max_restarts:  10,
       restart_delay: 3000,
-      out_file:      "./logs/camera_out.log",
-      error_file:    "./logs/camera_error.log",
+      out_file:      path.join(ROOT_DIR, "logs", "camera_out.log"),
+      error_file:    path.join(ROOT_DIR, "logs", "camera_error.log"),
       merge_logs:    true,
       log_date_format: "YYYY-MM-DD HH:mm:ss",
     },
     {
       name: "palf-api",
-      script: "main.py",
+      script: path.join(ROOT_DIR, "backend", "main.py"),
       interpreter: pythonCmd,
-      cwd:    "./backend",
+      cwd:    path.join(ROOT_DIR, "backend"),
       autorestart:   true,
       watch:         false,
       max_restarts:  10,
       restart_delay: 3000,
-      out_file:      "../logs/api_out.log",
-      error_file:    "../logs/api_error.log",
+      out_file:      path.join(ROOT_DIR, "logs", "api_out.log"),
+      error_file:    path.join(ROOT_DIR, "logs", "api_error.log"),
       merge_logs:    true,
       log_date_format: "YYYY-MM-DD HH:mm:ss",
     },
