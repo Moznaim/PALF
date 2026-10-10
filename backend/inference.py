@@ -167,3 +167,4 @@ def predict_fiber_grade(
         "timestamp": timestamp,
         "status": "completed",
     }
+

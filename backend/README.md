@@ -47,3 +47,4 @@ Returns model readiness, class names, and active device.
 - `image`: Uploaded image (JPEG/PNG)
 - `moisture_pct` or `moisture`: Numeric moisture percentage (e.g., `11.0`)
 - `model`: Optional model key (defaults to active model)
+

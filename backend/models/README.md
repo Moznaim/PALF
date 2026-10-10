@@ -12,3 +12,4 @@ from google.colab import files
 files.download('/content/abaca_finalvlatest_poc_outputs/checkpoints/efficientnet_b0_attention_best.pt')
 ```
 Once downloaded, place the `.pt` file inside this `backend/models/` directory.
+
