@@ -45,54 +45,75 @@ else
   sudo npm install -g pm2
 fi
 
-# ── 4. Python + picamera2 (for camera backend when ready) ────────────────────
+# ── 4. Python + picamera2 + virtualenv ───────────────────────────────────────
 info "Installing picamera2 and python dependencies…"
-sudo apt install -y python3-picamera2 python3-pip
+sudo apt install -y python3-picamera2 python3-pip python3-venv
 
 # ── 5. Enable RPi camera (V4L2 via raspi-config) ─────────────────────────────
 info "Enabling camera interface…"
 sudo raspi-config nonint do_camera 0
-# This allows the camera to appear as /dev/video0 (getUserMedia compatible)
 
-# ── 6. Serialport dependencies (for ESP32 USB serial later) ──────────────────
+# ── 6. Serialport dependencies (for ESP32 USB serial) ────────────────────────
 info "Installing serialport build dependencies…"
 sudo apt install -y build-essential libudev-dev
 
-# ── 7. npm install ───────────────────────────────────────────────────────────
-info "Installing Node.js dependencies…"
+# ── 7. Frontend dependencies ─────────────────────────────────────────────────
+info "Installing Node.js frontend dependencies…"
 cd "$REPO_DIR"
 npm install
 
-# ── 8. Environment file ──────────────────────────────────────────────────────
+# ── 8. Backend Python virtual environment & dependencies ─────────────────────
+info "Setting up Python virtual environment for FastAPI backend…"
+if [ ! -d "$REPO_DIR/backend/venv" ]; then
+  python3 -m venv --system-site-packages "$REPO_DIR/backend/venv"
+fi
+
+info "Installing PyTorch & backend requirements inside venv…"
+"$REPO_DIR/backend/venv/bin/pip" install --upgrade pip
+"$REPO_DIR/backend/venv/bin/pip" install -r "$REPO_DIR/backend/requirements.txt"
+
+# ── 9. Environment file ──────────────────────────────────────────────────────
 if [ ! -f "$REPO_DIR/.env.local" ]; then
   info "Creating .env.local from template…"
   cp "$REPO_DIR/.env.example" "$REPO_DIR/.env.local"
-  warn "Edit .env.local to set CAMERA_MODE, DEVICE_MODE, etc. for your hardware."
-  warn "  nano $REPO_DIR/.env.local"
+  # Set RPi-appropriate defaults
+  sed -i 's/NEXT_PUBLIC_CAMERA_MODE=WEBCAM/NEXT_PUBLIC_CAMERA_MODE=PICAMERA/' "$REPO_DIR/.env.local" || true
+  sed -i 's/NEXT_PUBLIC_MODEL_MODE=MOCK/NEXT_PUBLIC_MODEL_MODE=PYTORCH/' "$REPO_DIR/.env.local" || true
+  warn "Configured .env.local for RPi (PICAMERA + PYTORCH)."
 else
-  info ".env.local already exists — skipping."
+  info ".env.local already exists — keeping existing settings."
 fi
 
-# ── 9. Build Next.js ─────────────────────────────────────────────────────────
+# ── 10. Check for model checkpoint ───────────────────────────────────────────
+CHECKPOINT="$REPO_DIR/backend/models/efficientnet_b0_attention_best.pt"
+if [ ! -f "$CHECKPOINT" ]; then
+  warn "Checkpoint file not found at: $CHECKPOINT"
+  warn "Please copy 'efficientnet_b0_attention_best.pt' into backend/models/ to enable predictions."
+else
+  info "Found trained checkpoint: $CHECKPOINT"
+fi
+
+# ── 11. Build Next.js ────────────────────────────────────────────────────────
 info "Building Next.js for production…"
 npm run build
 
-# ── 10. Create logs directory ────────────────────────────────────────────────
+# ── 12. Create logs directory ────────────────────────────────────────────────
 mkdir -p "$REPO_DIR/logs"
 
-# ── 11. Start with PM2 ───────────────────────────────────────────────────────
-info "Starting app with PM2…"
+# ── 13. Start with PM2 ───────────────────────────────────────────────────────
+info "Starting all services with PM2 (Next.js, Camera service, Backend API)…"
 pm2 start "$REPO_DIR/ecosystem.config.js"
 pm2 save
 
-# ── 12. PM2 startup (auto-start on boot) ─────────────────────────────────────
+# ── 14. PM2 startup (auto-start on boot) ─────────────────────────────────────
 info "Configuring PM2 to start on boot…"
-warn "Run the command that PM2 prints below (it starts with 'sudo env PATH=...')"
-pm2 startup
+warn "Run the command printed by PM2 below if not already done (sudo env PATH=...)"
+pm2 startup || true
 
 echo ""
 info "=== Setup complete! ==="
-echo -e "  App running at: ${GREEN}http://$(hostname -I | awk '{print $1}'):3000${NC}"
-echo -e "  View logs:      ${GREEN}pm2 logs palf-vision${NC}"
-echo -e "  Update app:     ${GREEN}bash $REPO_DIR/scripts/deploy.sh${NC}"
+echo -e "  Frontend UI:   ${GREEN}http://$(hostname -I | awk '{print $1}'):3000${NC}"
+echo -e "  Backend API:   ${GREEN}http://$(hostname -I | awk '{print $1}'):4000/docs${NC}"
+echo -e "  View logs:     ${GREEN}pm2 logs${NC}"
+echo -e "  Process list:  ${GREEN}pm2 status${NC}"
 echo ""

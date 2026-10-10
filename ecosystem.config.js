@@ -6,6 +6,20 @@
 //   pm2 logs                             ← view combined logs
 //   pm2 save && pm2 startup              ← persist across reboots
 
+const fs = require("fs");
+const path = require("path");
+
+// Use backend virtual environment Python if available, otherwise fall back to system python3
+const venvPythonLinux = path.resolve("./backend/venv/bin/python3");
+const venvPythonWin   = path.resolve("./backend/venv/Scripts/python.exe");
+
+let pythonCmd = "python3";
+if (fs.existsSync(venvPythonLinux)) {
+  pythonCmd = venvPythonLinux;
+} else if (fs.existsSync(venvPythonWin)) {
+  pythonCmd = venvPythonWin;
+}
+
 module.exports = {
   apps: [
     {
@@ -28,7 +42,7 @@ module.exports = {
     },
     {
       name: "palf-camera",
-      script: "python3",
+      script: pythonCmd,
       args:   "scripts/camera_service.py",
       cwd:    "./",
       autorestart:   true,
@@ -42,7 +56,7 @@ module.exports = {
     },
     {
       name: "palf-api",
-      script: "python3",
+      script: pythonCmd,
       args:   "-m uvicorn main:app --app-dir . --host 0.0.0.0 --port 4000",
       cwd:    "./backend",
       autorestart:   true,
