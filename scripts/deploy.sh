@@ -27,8 +27,13 @@ info "Pulling latest code from GitHub…"
 git pull
 
 # ── 2. Install / update dependencies ─────────────────────────────────────────
-info "Installing dependencies…"
+info "Installing Node.js dependencies…"
 npm install
+
+if [ -d "$REPO_DIR/backend/venv" ]; then
+  info "Updating Python backend dependencies…"
+  "$REPO_DIR/backend/venv/bin/pip" install -r "$REPO_DIR/backend/requirements.txt"
+fi
 
 # ── 3. Rebuild Next.js ───────────────────────────────────────────────────────
 info "Building production bundle…"

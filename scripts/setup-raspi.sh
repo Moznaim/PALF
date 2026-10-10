@@ -103,8 +103,8 @@ npm run build
 mkdir -p "$REPO_DIR/logs"
 
 # ── 13. Start with PM2 ───────────────────────────────────────────────────────
-info "Starting all services with PM2 (Next.js, Camera service, Backend API)…"
-pm2 start "$REPO_DIR/ecosystem.config.js"
+info "Starting / updating all services with PM2 (Next.js, Camera service, Backend API)…"
+pm2 startOrRestart "$REPO_DIR/ecosystem.config.js"
 pm2 save
 
 # ── 14. PM2 startup (auto-start on boot) ─────────────────────────────────────
