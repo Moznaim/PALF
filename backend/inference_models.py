@@ -13,7 +13,7 @@ NUM_CLASSES = 3
 
 
 # ==============================================================================
-# BASE FUSION MODEL
+# BASE FUSION MODEL & HELPERS
 # ==============================================================================
 
 class BaseFusionModel(nn.Module):
@@ -26,6 +26,58 @@ class BaseFusionModel(nn.Module):
         if moisture.ndim == 1:
             return moisture.unsqueeze(1).float()
         return moisture.float()
+
+
+class MoistureMLP(nn.Module):
+    """Moisture projection branch for concatenation fusion."""
+    def __init__(self, in_dim: int = 1, hidden_dim: int = 32, out_dim: int = 32):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(in_dim, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, out_dim),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+
+# ==============================================================================
+# DESIGN 1: RESNET-50 + FEATURE CONCATENATION
+# ==============================================================================
+
+class ResNet50ConcatModel(BaseFusionModel):
+    """
+    ResNet-50 visual feature extractor concatenated with an MLP-projected
+    moisture representation, classified via a 2-layer MLP head.
+    """
+    def __init__(
+        self,
+        num_classes: int = NUM_CLASSES,
+        pretrained: bool = False,
+        moisture_dim: int = 32,
+        hidden: int = 256,
+        dropout: float = 0.3,
+    ):
+        super().__init__()
+        weights = models.ResNet50_Weights.IMAGENET1K_V2 if pretrained else None
+        bb = models.resnet50(weights=weights)
+        feat_dim = bb.fc.in_features                 # 2048
+        bb.fc = nn.Identity()                        # backbone now returns the pooled 2048-d visual vector
+        self.backbone = bb
+        self.moisture_mlp = MoistureMLP(out_dim=moisture_dim)
+        self.classifier = nn.Sequential(
+            nn.Linear(feat_dim + moisture_dim, hidden),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(hidden, num_classes),
+        )
+
+    def forward(self, image: torch.Tensor, moisture: torch.Tensor) -> torch.Tensor:
+        v = self.backbone(image)                                     # (B, 2048)
+        m = self.moisture_mlp(self._prep_moisture(moisture))         # (B, 32)
+        return self.classifier(torch.cat([v, m], dim=1))             # (B, 3)
 
 
 # ==============================================================================
@@ -98,8 +150,8 @@ class EfficientNetAttentionModel(BaseFusionModel):
 
 MODEL_REGISTRY = {
     "efficientnet_b0_attention": EfficientNetAttentionModel,
-    # "resnet50_concat": ResNetConcatModel,          # Ready to add later
-    # "swin_t_cross_attention": SwinCrossAttentionModel,
+    "resnet50_concat": ResNet50ConcatModel,
+    # "swin_t_cross_attention": SwinCrossAttentionModel, # Ready for Swin-T
 }
 
 

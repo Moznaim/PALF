@@ -1,7 +1,8 @@
 import os
+import glob
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, List, Dict
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,31 +17,68 @@ logging.basicConfig(
 )
 logger = logging.getLogger("palf-api")
 
-DEFAULT_MODEL_PATH = os.getenv(
-    "MODEL_PATH",
-    os.path.join(os.path.dirname(__file__), "models", "efficientnet_b0_attention_best.pt")
-)
-
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 MAX_IMAGE_BYTES = 15 * 1024 * 1024  # 15 MB limit
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
+def resolve_model_path() -> Optional[str]:
+    """
+    Finds the model checkpoint to load based on:
+    1. Direct MODEL_PATH env var
+    2. MODEL_NAME / MODEL_KEY env var ('resnet' or 'efficientnet')
+    3. Auto-detection of available .pt files in backend/models/
+    """
+    # 1. Explicit path
+    env_path = os.getenv("MODEL_PATH")
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    # 2. Key-based hint
+    hint = os.getenv("MODEL_NAME", os.getenv("MODEL_KEY", "")).lower()
+    if "resnet" in hint:
+        p = os.path.join(MODELS_DIR, "resnet50_concat_best.pt")
+        if os.path.exists(p):
+            return p
+    elif "efficientnet" in hint:
+        p = os.path.join(MODELS_DIR, "efficientnet_b0_attention_best.pt")
+        if os.path.exists(p):
+            return p
+
+    # 3. Auto-detect priority list
+    candidates = [
+        "resnet50_concat_best.pt",
+        "efficientnet_b0_attention_best.pt",
+    ]
+    for c in candidates:
+        p = os.path.join(MODELS_DIR, c)
+        if os.path.exists(p):
+            return p
+
+    # 4. Any .pt file in models directory
+    any_pt = glob.glob(os.path.join(MODELS_DIR, "*.pt"))
+    if any_pt:
+        return any_pt[0]
+
+    return None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Load the model into memory
-    if os.path.exists(DEFAULT_MODEL_PATH):
+    # Startup: Load the active model into memory
+    model_path = resolve_model_path()
+    if model_path:
         try:
-            load_model_checkpoint(DEFAULT_MODEL_PATH)
-            logger.info("Default model loaded and ready for inference.")
+            load_model_checkpoint(model_path)
+            logger.info(f"Model loaded and ready for inference from: {model_path}")
         except Exception as e:
-            logger.error(f"Failed to load model from {DEFAULT_MODEL_PATH}: {e}")
+            logger.error(f"Failed to load model from {model_path}: {e}")
     else:
         logger.warning(
-            f"Checkpoint file not found at: {DEFAULT_MODEL_PATH}\n"
-            f"Place 'efficientnet_b0_attention_best.pt' in 'backend/models/' to enable predictions."
+            f"No checkpoint found in {MODELS_DIR}.\n"
+            f"Place 'resnet50_concat_best.pt' or 'efficientnet_b0_attention_best.pt' in 'backend/models/'."
         )
     yield
-    # Shutdown logic (if any)
     logger.info("Shutting down PALF inference service.")
 
 
@@ -54,7 +92,7 @@ app = FastAPI(
 # CORS configuration to allow local Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust for specific origins if preferred
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,6 +119,49 @@ async def health_check():
     )
 
 
+@app.get("/models")
+async def list_available_models():
+    """Lists all checkpoint files currently available in backend/models/."""
+    files = glob.glob(os.path.join(MODELS_DIR, "*.pt"))
+    active_info = get_loaded_model_info()
+    active_key = active_info["model_key"] if active_info else None
+
+    available = []
+    for f in files:
+        basename = os.path.basename(f)
+        available.append({
+            "filename": basename,
+            "path": f,
+            "is_active": active_info and os.path.samefile(f, active_info.get("checkpoint_path", "")),
+        })
+    return {"active_model": active_key, "available_checkpoints": available}
+
+
+@app.post("/models/switch")
+async def switch_model(filename: str = Form(...)):
+    """Switches the active model to another checkpoint in backend/models/."""
+    target_path = os.path.join(MODELS_DIR, filename)
+    if not os.path.exists(target_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Checkpoint file '{filename}' not found in backend/models/.",
+        )
+    try:
+        _, meta = load_model_checkpoint(target_path)
+        return {
+            "status": "switched",
+            "active_model": meta["model_key"],
+            "class_names": meta["class_names"],
+            "best_val_macro_f1": meta.get("best_val_macro_f1"),
+        }
+    except Exception as e:
+        logger.error(f"Failed to switch model to {filename}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load checkpoint '{filename}': {str(e)}",
+        )
+
+
 @app.post(
     "/api/classify",
     response_model=ClassifyResponse,
@@ -100,7 +181,7 @@ async def classify_fiber(
     if info is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Inference model is not loaded. Please ensure the checkpoint file is present in backend/models/.",
+            detail="Inference model is not loaded. Please ensure a checkpoint file is present in backend/models/.",
         )
 
     # 2. Extract and validate moisture value
@@ -154,4 +235,3 @@ async def classify_fiber(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=4000, reload=False)
-
