@@ -73,7 +73,7 @@ export default function Dashboard(){
   const lastGrade        = history[0]?.grade??"—";
   const gradeCounts      = GRADES.reduce((a,g)=>({...a,[g]:history.filter(h=>h.grade===g).length}),{});
   const busy             = ["VALIDATING","PROCESSING","CLASSIFYING"].includes(state);
-  const sim              = MODE.model==="MOCK"||MODE.device==="MOCK";
+  const sim              = MODE.model==="MOCK";
 
   /* ── camera handlers ────────────────────────────────────────── */
   async function openCamera(){
