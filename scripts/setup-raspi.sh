@@ -113,10 +113,8 @@ info "Configuring PM2 to start on boot…"
 warn "Run the command printed by PM2 below if not already done (sudo env PATH=...)"
 pm2 startup || true
 
-echo ""
-info "=== Setup complete! ==="
-echo -e "  Frontend UI:   ${GREEN}http://$(hostname -I | awk '{print $1}'):3000${NC}"
-echo -e "  Backend API:   ${GREEN}http://$(hostname -I | awk '{print $1}'):4000/docs${NC}"
-echo -e "  View logs:     ${GREEN}pm2 logs${NC}"
-echo -e "  Process list:  ${GREEN}pm2 status${NC}"
-echo ""
+# ── 15. Autostart: browser kiosk on boot ──────────────────────────────────────
+info "Configuring browser kiosk autostart on desktop login…"
+chmod +x "$REPO_DIR/scripts/setup-autostart.sh"
+bash "$REPO_DIR/scripts/setup-autostart.sh"
+
