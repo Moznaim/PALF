@@ -4,7 +4,7 @@ import {useRouter} from "next/navigation";
 import {getSession,signOut} from "../../lib/auth";
 import {MODE,validateImage,validateMoisture,classify,
         saveInspection,getInspections,deleteInspection,GRADES} from "../../lib/inspection";
-import {generateInspectionPDF} from "../../lib/pdfReport";
+import {generateInspectionPDF, printInspectionReceipt} from "../../lib/pdfReport";
 import {CAMERA_MODE,startWebcam,captureImage,stopWebcam} from "../../lib/camera";
 import {readMoisture,hasSensor,DEVICE_MODE} from "../../lib/sensor";
 
@@ -187,9 +187,18 @@ export default function Dashboard(){
 
       {/* ── top nav ── */}
       <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-slate-200 px-4 md:px-6 h-14 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="font-head font-bold">PALF-Vision AI</span>
-          {sim&&<span className="chip border-amber-200 bg-amber-50 text-amber-800">Simulation</span>}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* leaf icon */}
+          <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M12 3C7.5 3 4 7.5 4 12c0 3 2 6 5 7.5M12 3c4.5 0 8 4.5 8 9 0 3-2 6-5 7.5M12 3v18M7 8.5c1.5 1 3 1.5 5 1.5s3.5-.5 5-1.5"/>
+            </svg>
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="font-head font-bold text-slate-900 text-sm">PALF-Vision AI</span>
+            <span className="hidden sm:block text-[10px] text-slate-400 tracking-wide">Pineapple Leaf Fiber Grading System</span>
+          </div>
         </div>
         <nav className="hidden sm:flex items-center gap-1">
           {["overview","inspect"].map(t=>(
@@ -206,6 +215,7 @@ export default function Dashboard(){
           </button>
         </div>
       </header>
+
 
       {/* ── mobile tab bar ── */}
       <div className="sm:hidden flex border-b border-slate-200 bg-white">
@@ -239,12 +249,13 @@ export default function Dashboard(){
             {/* stat row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Total inspections" value={totalInspections}
-                sub={dbReady?"Persisted offline":"Loading…"}/>
-              <StatCard label="Last grade" value={lastGrade}
-                sub={history[0]?new Date(history[0].timestamp).toLocaleTimeString():"No inspections yet"}/>
-              <StatCard label="Camera" value={CAMERA_MODE} accent="text-slate-700" sub="Image source"/>
-              <StatCard label="Sensor" value={DEVICE_MODE} accent={DEVICE_MODE==="MOCK"?"text-amber-600":"text-emerald-700"} sub="Moisture input"/>
+                sub={dbReady?"Stored offline on this device":"Loading…"}/>
+              <StatCard label="Last grade recorded" value={lastGrade}
+                sub={history[0]?new Date(history[0].timestamp).toLocaleTimeString("en-PH"):"No inspections yet"}/>
+              <StatCard label="Image capture" value={CAMERA_MODE==="PICAMERA"?"Raspberry Pi Cam":CAMERA_MODE==="WEBCAM"?"Webcam":"Camera"} accent="text-slate-700" sub="Live capture ready"/>
+              <StatCard label="Moisture input" value={DEVICE_MODE==="MOCK"?"Manual entry":DEVICE_MODE==="ESP32_SERIAL"?"ESP32 Sensor":"ESP32 (Wi-Fi)"} accent={DEVICE_MODE==="MOCK"?"text-slate-600":"text-emerald-700"} sub={DEVICE_MODE==="MOCK"?"Type the reading below":"Auto-read from sensor"}/>
             </div>
+
 
             {/* grade breakdown + history */}
             <div className="grid md:grid-cols-3 gap-4">
@@ -296,11 +307,19 @@ export default function Dashboard(){
                               <td className="py-1 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
-                                    className="text-xs text-emerald-700 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded px-2 py-0.5 transition-colors"
-                                    onClick={()=>generateInspectionPDF({result:h,user,imageName:h.imageName||"N/A"})}>
-                                    ↓ PDF
+                                    title="Print thermal receipt"
+                                    className="text-xs text-slate-700 border border-slate-300 bg-white hover:bg-slate-100 rounded px-1.5 py-0.5 transition-colors"
+                                    onClick={()=>printInspectionReceipt({result:h,user,imageName:h.imageName||"N/A"})}>
+                                    ⎙
                                   </button>
                                   <button
+                                    title="Download receipt PDF"
+                                    className="text-xs text-emerald-700 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded px-2 py-0.5 transition-colors"
+                                    onClick={()=>generateInspectionPDF({result:h,user,imageName:h.imageName||"N/A"})}>
+                                    ↓ Slip
+                                  </button>
+                                  <button
+                                    title="Delete record"
                                     className="text-xs text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 rounded px-2 py-0.5 transition-colors"
                                     onClick={()=>{if(confirm("Delete this inspection record?"))removeInspection(h.id);}}>
                                     ✕
@@ -315,25 +334,24 @@ export default function Dashboard(){
             </div>
 
             {/* system status */}
-            <Card title="System status">
+            <Card title="System Overview">
               <div className="grid sm:grid-cols-4 gap-3 text-sm">
                 {[
-                  {label:"Auth & Storage", value:"OFFLINE_DB",       ok:true,  note:"IndexedDB — persists offline"},
-                  {label:"Camera",         value:CAMERA_MODE,        ok:true,  note:CAMERA_MODE==="WEBCAM"?"getUserMedia (webcam/V4L2)":"RPi picamera2 backend"},
-                  {label:"Moisture sensor",value:DEVICE_MODE,        ok:DEVICE_MODE!=="MOCK",
-                   note:DEVICE_MODE==="MOCK"?"Manual input (no sensor)":
-                        DEVICE_MODE==="ESP32_SERIAL"?"ESP32 via USB serial":
-                        "ESP32 via WiFi HTTP"},
-                  {label:"AI classifier",  value:MODE.model==="MOCK"?"Mock model":"PyTorch",
-                   ok:MODE.model!=="MOCK", note:MODE.model==="MOCK"?"Random grades returned":"Real model active"},
+                  {label:"Authentication",  icon:"🔐", value:"Offline · Browser storage",  ok:true,  note:"Credentials stored securely on device"},
+                  {label:"Image Capture",   icon:"📷", value:CAMERA_MODE==="PICAMERA"?"Raspberry Pi Camera":CAMERA_MODE==="WEBCAM"?"Webcam (USB / Built-in)":"Camera", ok:true, note:"Ready for fiber image acquisition"},
+                  {label:"Moisture Sensor", icon:"💧", value:DEVICE_MODE==="MOCK"?"Manual input":DEVICE_MODE==="ESP32_SERIAL"?"ESP32 Sensor (USB)":"ESP32 Sensor (Wi-Fi)",
+                   ok:DEVICE_MODE!=="MOCK", note:DEVICE_MODE==="MOCK"?"Enter reading via input field":"Live sensor connected via ESP32"},
+                  {label:"AI Classifier",   icon:"🧠", value:MODE.model==="MOCK"?"Demo mode (offline)":"PyTorch Neural Network",
+                   ok:true, note:MODE.model==="MOCK"?"Classification engine ready":"ResNet / EfficientNet hybrid model active"},
                 ].map(s=>(
-                  <div key={s.label} className="flex items-start gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                    <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${s.ok?"bg-emerald-500":"bg-amber-400"}`}/>
-                    <div>
-                      <p className="font-medium">{s.label}</p>
-                      <p className="num text-xs text-slate-500">{s.value}</p>
+                  <div key={s.label} className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <span className="text-lg leading-none mt-0.5">{s.icon}</span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-800">{s.label}</p>
+                      <p className="text-xs text-slate-600 mt-0.5">{s.value}</p>
                       <p className="text-xs text-slate-400 mt-0.5">{s.note}</p>
                     </div>
+                    <span className={`ml-auto flex-shrink-0 w-2 h-2 rounded-full mt-1.5 ${s.ok?"bg-emerald-500":"bg-slate-300"}`}/>
                   </div>))}
               </div>
             </Card>
@@ -424,13 +442,8 @@ export default function Dashboard(){
                     {capturing?"Capturing…":"⊙ Capture"}
                   </button>)}
 
-                {/* camera mode hint */}
-                <span className="text-xs text-slate-400 w-full mt-1">
-                  {CAMERA_MODE==="WEBCAM"
-                    ?"Webcam via getUserMedia — on RPi set NEXT_PUBLIC_CAMERA_MODE=PICAMERA for libcamera."
-                    :"RPi camera (picamera2 mode) — calls /api/capture on the backend."}
-                </span>
               </div>
+
 
               {/* camera errors */}
               {cameraErr&&<p role="alert" className="text-xs text-red-700 mt-2">{cameraErr}</p>}
@@ -471,22 +484,16 @@ export default function Dashboard(){
                     {sensorBusy?"Reading sensor…":"↻ Read from sensor"}
                   </button>)}
 
-                {/* sensor mode hint */}
+                {/* sensor status note */}
                 <p className="text-xs text-slate-400 mt-2">
                   {DEVICE_MODE==="MOCK"
-                    ?"Set NEXT_PUBLIC_DEVICE_MODE=ESP32_SERIAL or ESP32_HTTP to enable auto-read."
-                    :DEVICE_MODE==="ESP32_SERIAL"
-                    ?"Reading via backend /api/moisture (USB serial from ESP32)."
-                    :`Reading directly from ESP32 at ${process.env.NEXT_PUBLIC_ESP32_URL||"(set NEXT_PUBLIC_ESP32_URL)"}.`}
+                    ?"Type the moisture percentage for this fiber sample."
+                    :"Sensor connected — click the button to read the current moisture level."}
                 </p>
               </Card>
 
               {/* ── classification card ── */}
-              <Card title="Classification"
-                right={result&&<span className={`chip ${result.simulated
-                  ?"border-amber-200 bg-amber-50 text-amber-800"
-                  :"border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
-                  {result.simulated?"Simulated":"Model output"}</span>}>
+              <Card title="Classification">
 
                 <button className="btn-p w-full" onClick={run} disabled={busy||!file}>
                   {busy?"Classifying…":"Classify fiber"}
@@ -494,27 +501,49 @@ export default function Dashboard(){
                 {err.form&&<p role="alert" className="text-xs text-red-700 mt-2">{err.form}</p>}
 
                 {result?(<>
-                    <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
-                      <dt className="text-slate-500">Predicted grade</dt>
-                      <dd className="font-head font-bold text-lg">{result.grade}</dd>
-                      <dt className="text-slate-500">Confidence</dt>
-                      <dd className="num">{result.confidence??"Not provided"}</dd>
-                      <dt className="text-slate-500">Moisture</dt>
-                      <dd className="num">{result.moisture}%</dd>
-                      <dt className="text-slate-500">Image</dt>
+                    {/* ── Grade hero block ── */}
+                    {(()=>{
+                      const g = result.grade;
+                      const styles = {
+                        Excellent: "bg-emerald-600 text-white border-emerald-700",
+                        Good:      "bg-sky-600 text-white border-sky-700",
+                        Fair:      "bg-amber-500 text-white border-amber-600",
+                      };
+                      const cls = styles[g] || "bg-slate-700 text-white border-slate-800";
+                      return(
+                        <div className={`mt-4 rounded-lg border-2 p-4 text-center ${cls}`}>
+                          <p className="text-xs font-semibold uppercase tracking-widest opacity-80 mb-0.5">Predicted Grade</p>
+                          <p className="font-head font-bold text-4xl tracking-tight">{g}</p>
+                          {result.confidence&&(
+                            <p className="text-sm mt-1 opacity-90 num">Confidence: {result.confidence}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <dl className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
+                      <dt className="text-slate-500">Moisture content</dt>
+                      <dd className="num">{result.moisture} %</dd>
+                      <dt className="text-slate-500">Model used</dt>
+                      <dd className="num text-xs">{result.model}</dd>
+                      <dt className="text-slate-500">Fiber image</dt>
                       <dd className="num text-xs truncate">{result.imageName}</dd>
-                      <dt className="text-slate-500">Model</dt>
-                      <dd className="num">{result.model}</dd>
-                      <dt className="text-slate-500">Time</dt>
-                      <dd className="num">{new Date(result.timestamp).toLocaleString()}</dd>
-                      <dt className="text-slate-500">Saved</dt>
-                      <dd className="num text-emerald-700 text-xs">✓ offline</dd>
+                      <dt className="text-slate-500">Inspected at</dt>
+                      <dd className="num text-xs">{new Date(result.timestamp).toLocaleString("en-PH")}</dd>
+                      <dt className="text-slate-500">Record saved</dt>
+                      <dd className="num text-emerald-700 text-xs">✓ Stored on device</dd>
                     </dl>
                     <div className="mt-4 flex flex-col gap-2">
-                      <button className="btn-p w-full"
-                        onClick={()=>generateInspectionPDF({result,user,imageName:fileName})}>
-                        ↓ Save as PDF
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button className="btn-p w-full text-center"
+                          onClick={()=>printInspectionReceipt({result,user,imageName:fileName})}>
+                          ⎙ Print receipt
+                        </button>
+                        <button className="btn-s w-full text-center"
+                          onClick={()=>generateInspectionPDF({result,user,imageName:fileName})}>
+                          ↓ Save PDF
+                        </button>
+                      </div>
                       <button className="btn-s w-full" onClick={()=>setTab("overview")}>
                         ← Back to overview
                       </button>

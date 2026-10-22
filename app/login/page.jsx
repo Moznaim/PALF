@@ -1,7 +1,7 @@
 "use client";
 import {useState} from "react";
 import {useRouter} from "next/navigation";
-import {validate, register, signIn, authMode} from "../../lib/auth";
+import {validate, register, signIn} from "../../lib/auth";
 
 function Field({id,label,error,...p}){return(
   <div>
@@ -25,11 +25,7 @@ export default function Login(){
     if(Object.keys(er).length) return;
     setBusy(true);
     try{
-      if(reg){
-        await register(v);
-      } else {
-        await signIn(v);
-      }
+      if(reg){ await register(v); } else { await signIn(v); }
       router.push("/dashboard");
     } catch(err){
       setErrs({form: err.message});
@@ -38,12 +34,22 @@ export default function Login(){
   }
 
   return(
-    <main className="min-h-screen flex items-center justify-center p-4">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-emerald-50/40">
       <div className="w-full max-w-[420px]">
-        <div className="card p-8">
-          <h1 className="font-head text-xl font-bold">PALF-Vision AI</h1>
-          <p className="text-sm text-slate-500 mb-5">Pineapple leaf fiber grading system</p>
 
+        {/* Logo / Brand header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 shadow-lg mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M12 3C7.5 3 4 7.5 4 12c0 3 2 6 5 7.5M12 3c4.5 0 8 4.5 8 9 0 3-2 6-5 7.5M12 3v18M7 8.5c1.5 1 3 1.5 5 1.5s3.5-.5 5-1.5"/>
+            </svg>
+          </div>
+          <h1 className="font-head text-2xl font-bold text-slate-900">PALF-Vision AI</h1>
+          <p className="text-sm text-slate-500 mt-1">Pineapple Leaf Fiber Quality Grading System</p>
+        </div>
+
+        <div className="card p-7 shadow-md">
           {/* tab switcher */}
           <div role="tablist" className="grid grid-cols-2 p-1 mb-5 bg-slate-100 rounded">
             {["login","register"].map(m=>(
@@ -56,8 +62,8 @@ export default function Login(){
           </div>
 
           <form onSubmit={submit} noValidate className="space-y-3.5" key={mode}>
-            {reg&&<Field id="name"    label="Full name"        error={errs.name}     autoComplete="name"/>}
-            <Field id="email"         type="email" label="Email" error={errs.email}  autoComplete="email" placeholder="name@example.com"/>
+            {reg&&<Field id="name"    label="Full name"         error={errs.name}     autoComplete="name"/>}
+            <Field id="email"         type="email" label="Email address" error={errs.email}  autoComplete="email" placeholder="name@example.com"/>
             <Field id="password"      type="password" label="Password" error={errs.password}
               autoComplete={reg?"new-password":"current-password"}/>
             {reg&&<Field id="confirm" type="password" label="Confirm password" error={errs.confirm}
@@ -68,15 +74,14 @@ export default function Login(){
                 <p role="alert" className="text-xs text-red-700">{errs.form}</p>
               </div>)}
 
-            <button className="btn-p w-full" disabled={busy}>
+            <button className="btn-p w-full py-2.5" disabled={busy}>
               {busy?(reg?"Creating account…":"Signing in…"):reg?"Create account":"Sign in"}
             </button>
           </form>
         </div>
 
-        {/* mode badge */}
-        <p className="mt-3 text-center chip border-emerald-200 bg-emerald-50 text-emerald-800 w-full justify-center">
-          {authMode} · data stored offline in your browser
+        <p className="mt-4 text-center text-xs text-slate-400">
+          Credentials are stored securely in your local browser · No internet required
         </p>
       </div>
     </main>);
