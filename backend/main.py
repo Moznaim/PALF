@@ -7,7 +7,8 @@ from typing import Optional, List, Dict
 try:
     from dotenv import load_dotenv
     _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    load_dotenv(os.path.join(_root_dir, ".env.local"), override=False)
+    # override=True ensures .env.local takes precedence over stale process/PM2 environment variables
+    load_dotenv(os.path.join(_root_dir, ".env.local"), override=True)
     load_dotenv(os.path.join(_root_dir, ".env"), override=False)
 except ImportError:
     pass
