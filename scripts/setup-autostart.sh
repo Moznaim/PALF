@@ -31,10 +31,12 @@ info "User: $CURRENT_USER"
 info "Repo: $REPO_DIR"
 
 # ── Sanity checks ─────────────────────────────────────────────────────────────
-command -v pm2         &>/dev/null || error "PM2 not found. Run setup-raspi.sh first."
-command -v chromium-browser &>/dev/null \
-  || command -v chromium &>/dev/null \
-  || warn "Chromium not installed. Install with: sudo apt install -y chromium-browser"
+command -v pm2 &>/dev/null || error "PM2 not found. Run setup-raspi.sh first."
+
+if ! command -v firefox-esr &>/dev/null && ! command -v firefox &>/dev/null && ! command -v chromium-browser &>/dev/null && ! command -v chromium &>/dev/null; then
+  warn "No browser detected. Installing Firefox ESR..."
+  sudo apt update && sudo apt install -y firefox-esr
+fi
 
 # ── Step 1: Make scripts executable ──────────────────────────────────────────
 info "Making scripts executable…"
