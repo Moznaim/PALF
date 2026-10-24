@@ -61,6 +61,9 @@ module.exports = {
       script: path.join(ROOT_DIR, "backend", "main.py"),
       interpreter: pythonCmd,
       cwd:    path.join(ROOT_DIR, "backend"),
+      env: {
+        MODEL_NAME: "efficientnet",
+      },
       autorestart:   true,
       watch:         false,
       max_restarts:  10,

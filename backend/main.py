@@ -41,16 +41,27 @@ def resolve_model_path() -> Optional[str]:
     # 1. Explicit path
     env_path = os.getenv("MODEL_PATH")
     if env_path and os.path.exists(env_path):
+        logger.info(f"Using MODEL_PATH from env: {env_path}")
         return env_path
 
     # 2. Key-based hint
     hint = os.getenv("MODEL_NAME", os.getenv("MODEL_KEY", "")).lower()
-    if "resnet" in hint:
-        res = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
-        if res: return res[0]
-    elif "efficientnet" in hint:
+    logger.info(f"Resolving model with hint MODEL_NAME='{hint}' (MODELS_DIR='{MODELS_DIR}')")
+    
+    if "efficientnet" in hint:
         eff = glob.glob(os.path.join(MODELS_DIR, "*efficientnet*.pt"))
-        if eff: return eff[0]
+        if eff: 
+            logger.info(f"Selected EfficientNet checkpoint: {eff[0]}")
+            return eff[0]
+        else:
+            logger.warning("MODEL_NAME contains 'efficientnet', but no '*efficientnet*.pt' found in models/")
+    elif "resnet" in hint:
+        res = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
+        if res: 
+            logger.info(f"Selected ResNet checkpoint: {res[0]}")
+            return res[0]
+        else:
+            logger.warning("MODEL_NAME contains 'resnet', but no '*resnet*.pt' found in models/")
 
     # 3. Auto-detect priority list (ResNet first, then EfficientNet)
     resnets = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
