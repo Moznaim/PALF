@@ -61,17 +61,31 @@ fi
 info "Saving PM2 process list…"
 pm2 save --force
 
-# ── Step 3: LXDE autostart entry (opens browser on desktop login) ─────────────
+# ── Step 3: Configure Autostart (Both Wayland and X11/LXDE compatible) ──────
+info "Configuring Desktop Autostart for user: $CURRENT_USER…"
+
+# Method A: XDG Autostart (.desktop file) — Works on Bookworm (Wayfire/Wayland) AND Bullseye (LXDE/X11)
+XDG_AUTOSTART_DIR="/home/$CURRENT_USER/.config/autostart"
+mkdir -p "$XDG_AUTOSTART_DIR"
+
+cat <<EOF > "$XDG_AUTOSTART_DIR/palf-browser.desktop"
+[Desktop Entry]
+Type=Application
+Name=PALF-Vision Kiosk
+Comment=Start PALF-Vision AI in Kiosk mode
+Exec=bash $SCRIPT_DIR/autostart-browser.sh
+Terminal=false
+StartupNotify=false
+EOF
+chown -R "$CURRENT_USER:$CURRENT_USER" "$XDG_AUTOSTART_DIR"
+info "Created XDG autostart entry: $XDG_AUTOSTART_DIR/palf-browser.desktop"
+
+# Method B: Legacy LXDE-pi autostart (for Bullseye / Legacy X11)
 AUTOSTART_DIR="/home/$CURRENT_USER/.config/lxsession/LXDE-pi"
 AUTOSTART_FILE="$AUTOSTART_DIR/autostart"
-
-info "Configuring LXDE autostart for user: $CURRENT_USER…"
 mkdir -p "$AUTOSTART_DIR"
-
-# Create or reset the autostart file — keep existing entries, add ours if missing
 touch "$AUTOSTART_FILE"
 
-# Disable screensaver and screen blanking (kiosk best practice)
 SCREEN_OFF_ENTRY="@xset s off"
 SCREEN_DPMS_ENTRY="@xset -dpms"
 SCREEN_BLANK_ENTRY="@xset s noblank"
@@ -80,20 +94,14 @@ for entry in "$SCREEN_OFF_ENTRY" "$SCREEN_DPMS_ENTRY" "$SCREEN_BLANK_ENTRY"; do
   grep -qxF "$entry" "$AUTOSTART_FILE" || echo "$entry" >> "$AUTOSTART_FILE"
 done
 
-# Add the PALF browser launch entry
 BROWSER_ENTRY="@bash $SCRIPT_DIR/autostart-browser.sh"
 if grep -qF "autostart-browser.sh" "$AUTOSTART_FILE"; then
-  info "Browser autostart entry already present — updating path…"
   sed -i "s|.*autostart-browser.sh.*|$BROWSER_ENTRY|" "$AUTOSTART_FILE"
 else
   echo "$BROWSER_ENTRY" >> "$AUTOSTART_FILE"
-  info "Browser autostart entry added."
 fi
-
-info "LXDE autostart file contents:"
-echo "─────────────────────────────────"
-cat "$AUTOSTART_FILE"
-echo "─────────────────────────────────"
+chown -R "$CURRENT_USER:$CURRENT_USER" "$AUTOSTART_DIR"
+info "Configured legacy LXDE autostart file."
 
 # ── Step 4: Configure Raspberry Pi to auto-login to desktop ──────────────────
 info "Ensuring Raspberry Pi boots to desktop with auto-login…"
