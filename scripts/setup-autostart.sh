@@ -33,10 +33,10 @@ info "Repo: $REPO_DIR"
 # ── Sanity checks ─────────────────────────────────────────────────────────────
 command -v pm2 &>/dev/null || error "PM2 not found. Run setup-raspi.sh first."
 
-# Ensure Chromium or Firefox is installed (Chromium preferred for touch + virtual keyboard)
-if ! command -v chromium-browser &>/dev/null && ! command -v chromium &>/dev/null && ! command -v firefox-esr &>/dev/null && ! command -v firefox &>/dev/null; then
-  info "Installing Chromium browser (recommended for touchscreen & virtual keyboard support)..."
-  sudo apt update && sudo apt install -y chromium-browser
+# Ensure Firefox ESR is installed
+if ! command -v firefox-esr &>/dev/null && ! command -v firefox &>/dev/null; then
+  info "Installing Firefox ESR..."
+  sudo apt update && sudo apt install -y firefox-esr
 fi
 
 # ── Step 1: Make scripts executable ──────────────────────────────────────────
@@ -142,8 +142,7 @@ echo -e "    1. PM2 starts ${GREEN}palf-vision${NC} (Next.js :3000)"
 echo -e "         + ${GREEN}palf-api${NC} (FastAPI :4000)"
 echo -e "         + ${GREEN}palf-camera${NC} (camera service)"
 echo -e "    2. Desktop auto-logs in as ${GREEN}$CURRENT_USER${NC}"
-echo -e "    3. Browser opens in ${GREEN}fullscreen touch mode${NC} → ${GREEN}http://localhost:3000/login${NC}"
-echo -e "       (Virtual on-screen keyboard enabled and ready)"
+echo -e "    3. Firefox ESR opens in ${GREEN}fullscreen kiosk mode${NC} → ${GREEN}http://localhost:3000/login${NC}"
 echo -e "    4. Screen stays ${GREEN}on (no blanking)${NC}"
 echo ""
 echo -e "  To test without rebooting:"
