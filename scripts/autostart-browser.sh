@@ -3,11 +3,8 @@
 # scripts/autostart-browser.sh
 #
 # Waits for the PALF-Vision Next.js server (localhost:3000) to be ready,
-# then opens Firefox (or Chromium as fallback) in kiosk mode pointing to the dashboard.
-#
-# Kiosk flags for Firefox:
-#   --kiosk <URL>      : Opens in fullscreen kiosk mode without browser chrome
-#   --private-window   : Prevents caching session crash/restore dialogs
+# then opens the browser in app / kiosk mode while keeping on-screen keyboards
+# (Squeekboard / Matchbox / Onboard / Wayfire OSK) functioning properly.
 # =============================================================================
 
 PALF_URL="http://localhost:3000/dashboard"
@@ -16,18 +13,17 @@ POLL_INTERVAL=2  # seconds between checks
 
 log() { echo "[palf-browser] $*"; }
 
-# ── 1. Detect browser (Firefox preferred, Chromium fallback) ──────────────────
-if command -v firefox-esr &>/dev/null; then
-  BROWSER="firefox-esr"
-elif command -v firefox &>/dev/null; then
-  BROWSER="firefox"
-elif command -v chromium-browser &>/dev/null; then
+# ── 1. Detect browser (Chromium is best for Raspberry Pi on-screen touch keyboard) ─
+if command -v chromium-browser &>/dev/null; then
   BROWSER="chromium-browser"
 elif command -v chromium &>/dev/null; then
   BROWSER="chromium"
+elif command -v firefox-esr &>/dev/null; then
+  BROWSER="firefox-esr"
+elif command -v firefox &>/dev/null; then
+  BROWSER="firefox"
 else
-  log "Neither Firefox nor Chromium found! Please install firefox-esr:"
-  log "  sudo apt install -y firefox-esr"
+  log "Neither Chromium nor Firefox found!"
   exit 1
 fi
 
@@ -47,21 +43,25 @@ done
 
 log "Server ready after ${elapsed}s. Launching $BROWSER …"
 
-# ── 3. Launch browser in kiosk mode ───────────────────────────────────────────
-if [[ "$BROWSER" == *"firefox"* ]]; then
-  # Firefox kiosk launch
-  # --kiosk : full screen kiosk without URL bar or window borders
-  # --private-window : avoids "Restore Session" alerts after abrupt power-cuts
-  exec "$BROWSER" --kiosk --private-window "$PALF_URL"
-else
-  # Chromium fallback
+# ── 3. Launch browser ──────────────────────────────────────────────────────────
+# NOTE on On-Screen Keyboard & Fullscreen:
+# In pure --kiosk mode, the window manager gives exclusive z-index to the browser,
+# hiding on-screen keyboards (Squeekboard, Matchbox, Onboard) behind the window.
+# We use --app mode with touch-events and touch-screen-optimized flags so the OSK
+# can float over the text input fields.
+
+if [[ "$BROWSER" == *"chromium"* ]]; then
   rm -f ~/.config/chromium/SingletonLock ~/.config/chromium/SingletonSocket
   exec "$BROWSER" \
-    --kiosk \
+    --app="$PALF_URL" \
+    --start-maximized \
+    --touch-events=enabled \
+    --enable-virtual-keyboard \
     --noerrdialogs \
     --disable-infobars \
     --no-first-run \
-    --disable-restore-session-state \
-    --disable-session-crashed-bubble \
-    "$PALF_URL"
+    --disable-session-crashed-bubble
+else
+  # Firefox: Launch without exclusive --kiosk lock so OSK layer can pop up
+  exec "$BROWSER" --private-window --start-maximized "$PALF_URL"
 fi
