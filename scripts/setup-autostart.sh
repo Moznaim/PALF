@@ -33,10 +33,16 @@ info "Repo: $REPO_DIR"
 # ── Sanity checks ─────────────────────────────────────────────────────────────
 command -v pm2 &>/dev/null || error "PM2 not found. Run setup-raspi.sh first."
 
-# Ensure Firefox ESR is installed
+# Ensure Firefox ESR and on-screen keyboard tools are installed
 if ! command -v firefox-esr &>/dev/null && ! command -v firefox &>/dev/null; then
   info "Installing Firefox ESR..."
   sudo apt update && sudo apt install -y firefox-esr
+fi
+
+# Ensure squeekboard (default on-screen keyboard for RPi Bookworm Wayland) is installed
+if ! command -v squeekboard &>/dev/null && ! command -v wvkbd-mobintl &>/dev/null; then
+  info "Installing Squeekboard on-screen keyboard..."
+  sudo apt update && sudo apt install -y squeekboard || true
 fi
 
 # ── Step 1: Make scripts executable ──────────────────────────────────────────

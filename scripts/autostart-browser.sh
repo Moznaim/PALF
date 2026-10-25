@@ -2,9 +2,8 @@
 # =============================================================================
 # scripts/autostart-browser.sh
 #
-# Waits for the PALF-Vision Next.js server (localhost:3000) to be ready,
-# then opens FIREFOX-ESR in fullscreen mode pointing to the LOGIN page
-# (http://localhost:3000/login).
+# Launches Firefox ESR in Fullscreen Kiosk Mode while ensuring the On-Screen
+# Virtual Keyboard (Squeekboard / wvkbd) layers OVER the browser surface.
 # =============================================================================
 
 PALF_URL="http://localhost:3000/login"
@@ -13,7 +12,7 @@ POLL_INTERVAL=2  # seconds between checks
 
 log() { echo "[palf-browser] $*"; }
 
-# ── 1. Target Firefox ESR explicitly ──────────────────────────────────────────
+# ── 1. Target Firefox ESR ─────────────────────────────────────────────────────
 if command -v firefox-esr &>/dev/null; then
   BROWSER="firefox-esr"
 elif command -v firefox &>/dev/null; then
@@ -24,10 +23,18 @@ else
   BROWSER="firefox-esr"
 fi
 
-log "Using browser: $BROWSER"
+# ── 2. Ensure Virtual Keyboard Daemon is running in Wayland / X11 ──────────────
+# In modern Raspberry Pi OS (Bookworm), squeekboard or wvkbd handles virtual touch input.
+# Launching squeekboard or wvkbd in the background ensures it is active on the overlay layer.
+if command -v squeekboard &>/dev/null; then
+  pgrep -x squeekboard >/dev/null || squeekboard &
+elif command -v wvkbd-mobintl &>/dev/null; then
+  pgrep -x wvkbd-mobintl >/dev/null || wvkbd-mobintl --layer overlay --hidden &
+fi
+
 log "Waiting for PALF-Vision server at http://localhost:3000 …"
 
-# ── 2. Wait until localhost:3000 responds ──────────────────────────────────────
+# ── 3. Wait until localhost:3000 responds ──────────────────────────────────────
 elapsed=0
 until curl -sf --max-time 2 "http://localhost:3000" > /dev/null 2>&1; do
   if [ "$elapsed" -ge "$MAX_WAIT" ]; then
@@ -40,7 +47,10 @@ done
 
 log "Server ready after ${elapsed}s. Launching $BROWSER on $PALF_URL …"
 
-# ── 3. Launch Firefox ESR ─────────────────────────────────────────────────────
-# --kiosk : True borderless fullscreen covering 100% of display
-# --private-window : Prevents session restore / crash prompt on power loss
+# ── 4. Launch Firefox ESR in Kiosk with Wayland Layer Support ──────────────────
+# MOZ_ENABLE_WAYLAND=1 ensures Firefox communicates directly via Wayland protocols,
+# allowing the compositor to recognize the layer-shell protocols for virtual keyboards
+# over the kiosk surface.
+
+export MOZ_ENABLE_WAYLAND=1
 exec "$BROWSER" --kiosk --private-window "$PALF_URL"
