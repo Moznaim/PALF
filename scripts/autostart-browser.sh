@@ -2,9 +2,11 @@
 # =============================================================================
 # scripts/autostart-browser.sh
 #
-# Launches Firefox ESR in Fullscreen Kiosk Mode while ensuring whichever
-# on-screen keyboard is installed (Squeekboard, Matchbox, or Onboard)
-# is active and layers OVER the browser surface.
+# Waits for the PALF-Vision server (localhost:3000) to be ready, then opens
+# Firefox ESR in MAXIMIZED WINDOW MODE (no --kiosk) landing on the LOGIN page.
+#
+# This allows the default on-screen keyboard (Squeekboard / OSK) and the taskbar
+# keyboard button to function normally without being blocked by kiosk overlays.
 # =============================================================================
 
 PALF_URL="http://localhost:3000/login"
@@ -24,24 +26,10 @@ else
   BROWSER="firefox-esr"
 fi
 
-# ── 2. Detect & Launch whichever Virtual Keyboard is present ──────────────────
-# - Squeekboard : Default on Raspberry Pi OS Bookworm (Wayland)
-# - Onboard     : Popular feature-rich OSK
-# - Matchbox    : Classic lightweight RPi keyboard (Bullseye / X11)
-if command -v squeekboard &>/dev/null; then
-  pgrep -x squeekboard >/dev/null || squeekboard &
-  log "Active on-screen keyboard: Squeekboard"
-elif command -v onboard &>/dev/null; then
-  pgrep -x onboard >/dev/null || onboard &
-  log "Active on-screen keyboard: Onboard"
-elif command -v matchbox-keyboard &>/dev/null; then
-  pgrep -x matchbox-keyboard >/dev/null || matchbox-keyboard &
-  log "Active on-screen keyboard: Matchbox"
-fi
-
+log "Using browser: $BROWSER"
 log "Waiting for PALF-Vision server at http://localhost:3000 …"
 
-# ── 3. Wait until localhost:3000 responds ──────────────────────────────────────
+# ── 2. Wait until localhost:3000 responds ──────────────────────────────────────
 elapsed=0
 until curl -sf --max-time 2 "http://localhost:3000" > /dev/null 2>&1; do
   if [ "$elapsed" -ge "$MAX_WAIT" ]; then
@@ -52,8 +40,17 @@ until curl -sf --max-time 2 "http://localhost:3000" > /dev/null 2>&1; do
   elapsed=$((elapsed + POLL_INTERVAL))
 done
 
-log "Server ready after ${elapsed}s. Launching $BROWSER on $PALF_URL …"
+log "Server ready after ${elapsed}s. Launching $BROWSER (Windowed / Maximized) on $PALF_URL …"
 
-# ── 4. Launch Firefox ESR in Kiosk with Wayland Layer Support ──────────────────
-export MOZ_ENABLE_WAYLAND=1
-exec "$BROWSER" --kiosk --private-window "$PALF_URL"
+# ── 3. Launch Firefox in Window Mode (No --kiosk lock) ─────────────────────────
+# Flags explained:
+#   --new-window       : Opens as a normal window
+#   --private-window   : Avoids session-restore popups on power loss
+#
+# Because --kiosk is omitted, the desktop taskbar and the system's default
+# on-screen keyboard icon stay fully accessible and functional!
+
+exec "$BROWSER" --new-window --private-window "$PALF_URL"
+
+exec "$BROWSER" --new-window --private-window "$PALF_URL"
+
