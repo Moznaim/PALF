@@ -33,9 +33,10 @@ info "Repo: $REPO_DIR"
 # ── Sanity checks ─────────────────────────────────────────────────────────────
 command -v pm2 &>/dev/null || error "PM2 not found. Run setup-raspi.sh first."
 
-if ! command -v firefox-esr &>/dev/null && ! command -v firefox &>/dev/null && ! command -v chromium-browser &>/dev/null && ! command -v chromium &>/dev/null; then
-  warn "No browser detected. Installing Firefox ESR..."
-  sudo apt update && sudo apt install -y firefox-esr
+# Ensure Chromium or Firefox is installed (Chromium preferred for touch + virtual keyboard)
+if ! command -v chromium-browser &>/dev/null && ! command -v chromium &>/dev/null && ! command -v firefox-esr &>/dev/null && ! command -v firefox &>/dev/null; then
+  info "Installing Chromium browser (recommended for touchscreen & virtual keyboard support)..."
+  sudo apt update && sudo apt install -y chromium-browser
 fi
 
 # ── Step 1: Make scripts executable ──────────────────────────────────────────
@@ -71,8 +72,8 @@ mkdir -p "$XDG_AUTOSTART_DIR"
 cat <<EOF > "$XDG_AUTOSTART_DIR/palf-browser.desktop"
 [Desktop Entry]
 Type=Application
-Name=PALF-Vision Kiosk
-Comment=Start PALF-Vision AI in Kiosk mode
+Name=PALF-Vision Web App
+Comment=Start PALF-Vision AI with Touch & Virtual Keyboard support
 Exec=bash $SCRIPT_DIR/autostart-browser.sh
 Terminal=false
 StartupNotify=false
@@ -141,7 +142,8 @@ echo -e "    1. PM2 starts ${GREEN}palf-vision${NC} (Next.js :3000)"
 echo -e "         + ${GREEN}palf-api${NC} (FastAPI :4000)"
 echo -e "         + ${GREEN}palf-camera${NC} (camera service)"
 echo -e "    2. Desktop auto-logs in as ${GREEN}$CURRENT_USER${NC}"
-echo -e "    3. Chromium opens in ${GREEN}kiosk mode${NC} → ${GREEN}http://localhost:3000/dashboard${NC}"
+echo -e "    3. Browser opens in ${GREEN}touch app mode${NC} → ${GREEN}http://localhost:3000/dashboard${NC}"
+echo -e "       (Virtual on-screen keyboard enabled and ready)"
 echo -e "    4. Screen stays ${GREEN}on (no blanking)${NC}"
 echo ""
 echo -e "  To test without rebooting:"
