@@ -2,8 +2,9 @@
 # =============================================================================
 # scripts/autostart-browser.sh
 #
-# Launches Firefox ESR in Fullscreen Kiosk Mode while ensuring the On-Screen
-# Virtual Keyboard (Squeekboard / wvkbd) layers OVER the browser surface.
+# Launches Firefox ESR in Fullscreen Kiosk Mode while ensuring whichever
+# on-screen keyboard is installed (Squeekboard, Matchbox, or Onboard)
+# is active and layers OVER the browser surface.
 # =============================================================================
 
 PALF_URL="http://localhost:3000/login"
@@ -23,13 +24,19 @@ else
   BROWSER="firefox-esr"
 fi
 
-# ── 2. Ensure Virtual Keyboard Daemon is running in Wayland / X11 ──────────────
-# In modern Raspberry Pi OS (Bookworm), squeekboard or wvkbd handles virtual touch input.
-# Launching squeekboard or wvkbd in the background ensures it is active on the overlay layer.
+# ── 2. Detect & Launch whichever Virtual Keyboard is present ──────────────────
+# - Squeekboard : Default on Raspberry Pi OS Bookworm (Wayland)
+# - Onboard     : Popular feature-rich OSK
+# - Matchbox    : Classic lightweight RPi keyboard (Bullseye / X11)
 if command -v squeekboard &>/dev/null; then
   pgrep -x squeekboard >/dev/null || squeekboard &
-elif command -v wvkbd-mobintl &>/dev/null; then
-  pgrep -x wvkbd-mobintl >/dev/null || wvkbd-mobintl --layer overlay --hidden &
+  log "Active on-screen keyboard: Squeekboard"
+elif command -v onboard &>/dev/null; then
+  pgrep -x onboard >/dev/null || onboard &
+  log "Active on-screen keyboard: Onboard"
+elif command -v matchbox-keyboard &>/dev/null; then
+  pgrep -x matchbox-keyboard >/dev/null || matchbox-keyboard &
+  log "Active on-screen keyboard: Matchbox"
 fi
 
 log "Waiting for PALF-Vision server at http://localhost:3000 …"
@@ -48,9 +55,5 @@ done
 log "Server ready after ${elapsed}s. Launching $BROWSER on $PALF_URL …"
 
 # ── 4. Launch Firefox ESR in Kiosk with Wayland Layer Support ──────────────────
-# MOZ_ENABLE_WAYLAND=1 ensures Firefox communicates directly via Wayland protocols,
-# allowing the compositor to recognize the layer-shell protocols for virtual keyboards
-# over the kiosk surface.
-
 export MOZ_ENABLE_WAYLAND=1
 exec "$BROWSER" --kiosk --private-window "$PALF_URL"
