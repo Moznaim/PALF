@@ -3,11 +3,11 @@
 # scripts/autostart-browser.sh
 #
 # Waits for the PALF-Vision Next.js server (localhost:3000) to be ready,
-# then opens the browser in app / kiosk mode while keeping on-screen keyboards
-# (Squeekboard / Matchbox / Onboard / Wayfire OSK) functioning properly.
+# then opens the browser in true borderless fullscreen pointing to the LOGIN page
+# (http://localhost:3000/login), while ensuring the on-screen keyboard functions.
 # =============================================================================
 
-PALF_URL="http://localhost:3000/dashboard"
+PALF_URL="http://localhost:3000/login"
 MAX_WAIT=120     # seconds to wait for server before giving up
 POLL_INTERVAL=2  # seconds between checks
 
@@ -41,20 +41,18 @@ until curl -sf --max-time 2 "http://localhost:3000" > /dev/null 2>&1; do
   elapsed=$((elapsed + POLL_INTERVAL))
 done
 
-log "Server ready after ${elapsed}s. Launching $BROWSER …"
+log "Server ready after ${elapsed}s. Launching $BROWSER on $PALF_URL …"
 
-# ── 3. Launch browser ──────────────────────────────────────────────────────────
-# NOTE on On-Screen Keyboard & Fullscreen:
-# In pure --kiosk mode, the window manager gives exclusive z-index to the browser,
-# hiding on-screen keyboards (Squeekboard, Matchbox, Onboard) behind the window.
-# We use --app mode with touch-events and touch-screen-optimized flags so the OSK
-# can float over the text input fields.
+# ── 3. Launch browser in full-screen touch mode ────────────────────────────────
+# --start-fullscreen + --app gives true 100% kiosk fullscreen with NO title bar,
+# NO address bar, and NO window borders, but keeps the window manager layer open
+# so the on-screen keyboard can pop up over text inputs!
 
 if [[ "$BROWSER" == *"chromium"* ]]; then
   rm -f ~/.config/chromium/SingletonLock ~/.config/chromium/SingletonSocket
   exec "$BROWSER" \
     --app="$PALF_URL" \
-    --start-maximized \
+    --start-fullscreen \
     --touch-events=enabled \
     --enable-virtual-keyboard \
     --noerrdialogs \
@@ -62,6 +60,6 @@ if [[ "$BROWSER" == *"chromium"* ]]; then
     --no-first-run \
     --disable-session-crashed-bubble
 else
-  # Firefox: Launch without exclusive --kiosk lock so OSK layer can pop up
-  exec "$BROWSER" --private-window --start-maximized "$PALF_URL"
+  # Firefox: Launch fullscreen to /login
+  exec "$BROWSER" --private-window --kiosk "$PALF_URL"
 fi
