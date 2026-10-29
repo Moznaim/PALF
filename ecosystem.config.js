@@ -63,7 +63,7 @@ module.exports = {
       interpreter: pythonCmd,
       cwd:    path.join(ROOT_DIR, "backend"),
       env: {
-        MODEL_NAME: "resnet",
+        MODEL_NAME: "efficientnet",
       },
       autorestart:   true,
       watch:         false,

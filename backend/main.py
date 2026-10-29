@@ -7,8 +7,19 @@ from typing import Optional, List, Dict
 try:
     from dotenv import load_dotenv
     _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _env_local = os.path.join(_root_dir, ".env.local")
+    # Auto-migrate stale MODEL_NAME=resnet to efficientnet if present in .env.local
+    if os.path.exists(_env_local):
+        try:
+            with open(_env_local, "r", encoding="utf-8") as _f:
+                _content = _f.read()
+            if "MODEL_NAME=resnet" in _content:
+                with open(_env_local, "w", encoding="utf-8") as _f:
+                    _f.write(_content.replace("MODEL_NAME=resnet", "MODEL_NAME=efficientnet"))
+        except Exception:
+            pass
     # override=True ensures .env.local takes precedence over stale process/PM2 environment variables
-    load_dotenv(os.path.join(_root_dir, ".env.local"), override=True)
+    load_dotenv(_env_local, override=True)
     load_dotenv(os.path.join(_root_dir, ".env"), override=False)
 except ImportError:
     pass
@@ -44,8 +55,8 @@ def resolve_model_path() -> Optional[str]:
         logger.info(f"Using MODEL_PATH from env: {env_path}")
         return env_path
 
-    # 2. Key-based hint
-    hint = os.getenv("MODEL_NAME", os.getenv("MODEL_KEY", "")).lower()
+    # 2. Key-based hint (defaults to efficientnet)
+    hint = os.getenv("MODEL_NAME", os.getenv("MODEL_KEY", "efficientnet")).lower()
     logger.info(f"Resolving model with hint MODEL_NAME='{hint}' (MODELS_DIR='{MODELS_DIR}')")
     
     if "efficientnet" in hint:
@@ -63,13 +74,13 @@ def resolve_model_path() -> Optional[str]:
         else:
             logger.warning("MODEL_NAME contains 'resnet', but no '*resnet*.pt' found in models/")
 
-    # 3. Auto-detect priority list (ResNet first, then EfficientNet)
-    resnets = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
-    if resnets:
-        return resnets[0]
+    # 3. Auto-detect priority list (EfficientNet first, then ResNet)
     efficientnets = glob.glob(os.path.join(MODELS_DIR, "*efficientnet*.pt"))
     if efficientnets:
         return efficientnets[0]
+    resnets = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
+    if resnets:
+        return resnets[0]
 
     # 4. Any other .pt file in models directory
     any_pt = glob.glob(os.path.join(MODELS_DIR, "*.pt"))
@@ -133,6 +144,7 @@ async def health_check():
         best_epoch=info.get("best_epoch"),
         best_val_macro_f1=info.get("best_val_macro_f1"),
         img_size=info.get("img_size"),
+        pad_to_square=info.get("pad_to_square"),
     )
 
 

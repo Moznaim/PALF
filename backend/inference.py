@@ -15,30 +15,58 @@ logger = logging.getLogger("palf_inference")
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def build_image_transform(img_size: int = 224, preserve_aspect: bool = False):
+
+class PadToSquare:
+    """
+    Pads a PIL image to a square canvas using a solid fill colour before resizing.
+    Matches the training preprocessing used for the new PALF dataset (pad_fill=(124,116,104)).
+    """
+    def __init__(self, fill: tuple = (124, 116, 104)):
+        self.fill = fill
+
+    def __call__(self, img: Image.Image) -> Image.Image:
+        w, h = img.size
+        if w == h:
+            return img
+        side = max(w, h)
+        canvas = Image.new("RGB", (side, side), self.fill)
+        canvas.paste(img, ((side - w) // 2, (side - h) // 2))
+        return canvas
+
+
+def build_image_transform(
+    img_size: int = 224,
+    preserve_aspect: bool = False,
+    pad_to_square: bool = False,
+    pad_fill: tuple = (124, 116, 104),
+):
     """
     Builds RGB preprocessing transform.
-    Matches Colab eval_tf exactly (transforms.Resize((224, 224))).
+
+    pad_to_square=True  – first pads the image to a square canvas (fill=pad_fill)
+                          then resizes to img_size×img_size. Matches the new PALF dataset
+                          training pipeline (pipeline_metadata.json: "pad_to_square": true).
+    preserve_aspect     – legacy centre-crop mode (mutually exclusive with pad_to_square).
+    Default             – direct resize to img_size×img_size (original ResNet training pipeline).
     """
-    if preserve_aspect:
-        return transforms.Compose([
-            transforms.Resize(img_size, interpolation=transforms.InterpolationMode.BILINEAR),
-            transforms.CenterCrop((img_size, img_size)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-        ])
+    steps = []
+    if pad_to_square:
+        steps.append(PadToSquare(fill=pad_fill))
+        steps.append(transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.BILINEAR))
+    elif preserve_aspect:
+        steps.append(transforms.Resize(img_size, interpolation=transforms.InterpolationMode.BILINEAR))
+        steps.append(transforms.CenterCrop((img_size, img_size)))
     else:
-        return transforms.Compose([
-            transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.BILINEAR),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-        ])
+        steps.append(transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.BILINEAR))
+
+    steps += [
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        ),
+    ]
+    return transforms.Compose(steps)
 
 # Global in-memory cache for loaded model, metadata, and transform
 _LOADED_MODEL = None
@@ -94,16 +122,42 @@ def load_model_checkpoint(checkpoint_path: str) -> Tuple[torch.nn.Module, Dict[s
         class_names = [class_names[0], class_names[2], class_names[1]]
         logger.info(f"SWAP_GOOD_FAIR enabled: active class names mapped as {class_names}")
 
-    # Determine input resolution and aspect ratio handling
-    # preserve_aspect=True prevents horizontal squishing and takes center crop
+    # Determine input resolution and preprocessing mode:
+    # - PAD_TO_SQUARE env or checkpoint["pad_to_square"]=True → PadToSquare + resize (new dataset pipeline)
+    # - PRESERVE_ASPECT env → legacy centre-crop mode
+    # - Default → direct resize (original ResNet training pipeline)
     env_img_size = os.getenv("MODEL_IMG_SIZE")
     if env_img_size:
         img_size = int(env_img_size)
     else:
         img_size = int(checkpoint.get("img_size", 224))
 
-    preserve_aspect = os.getenv("PRESERVE_ASPECT", "false").lower() in ("true", "1", "yes")
-    _ACTIVE_TRANSFORM = build_image_transform(img_size, preserve_aspect=preserve_aspect)
+    # pad_to_square priority: env flag > checkpoint metadata > False
+    prep_meta = checkpoint.get("preprocessing", {})
+    if not isinstance(prep_meta, dict):
+        prep_meta = {}
+
+    env_pad = os.getenv("PAD_TO_SQUARE", "").lower()
+    if env_pad in ("true", "1", "yes"):
+        pad_to_square = True
+    elif env_pad in ("false", "0", "no"):
+        pad_to_square = False
+    else:
+        pad_to_square = bool(checkpoint.get("pad_to_square", prep_meta.get("pad_to_square", False)))
+
+    pad_fill = tuple(prep_meta.get("pad_fill", [124, 116, 104]))
+
+    preserve_aspect = (not pad_to_square) and os.getenv("PRESERVE_ASPECT", "false").lower() in ("true", "1", "yes")
+
+    _ACTIVE_TRANSFORM = build_image_transform(
+        img_size,
+        preserve_aspect=preserve_aspect,
+        pad_to_square=pad_to_square,
+        pad_fill=pad_fill,
+    )
+    logger.info(
+        f"Image transform: size={img_size}, pad_to_square={pad_to_square}, pad_fill={pad_fill}, preserve_aspect={preserve_aspect}"
+    )
 
     _LOADED_MODEL = model
     _LOADED_METADATA = {
@@ -114,6 +168,7 @@ def load_model_checkpoint(checkpoint_path: str) -> Tuple[torch.nn.Module, Dict[s
             "std": float(moisture_stats["std"]),
         },
         "img_size": img_size,
+        "pad_to_square": pad_to_square,
         "best_epoch": checkpoint.get("best_epoch"),
         "best_val_macro_f1": checkpoint.get("best_val_macro_f1"),
         "checkpoint_path": checkpoint_path,

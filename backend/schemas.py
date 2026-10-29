@@ -10,6 +10,7 @@ class HealthResponse(BaseModel):
     best_epoch: Optional[int] = Field(None, example=9)
     best_val_macro_f1: Optional[float] = Field(None, example=0.9918)
     img_size: Optional[int] = Field(None, example=320)
+    pad_to_square: Optional[bool] = Field(None, example=True)
 
 
 class ClassifyResponse(BaseModel):
