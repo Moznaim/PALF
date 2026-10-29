@@ -15,6 +15,13 @@ logger = logging.getLogger("palf_inference")
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Limit PyTorch CPU threads on embedded devices (Raspberry Pi 4) to prevent OpenMP contention crashes
+if DEVICE.type == "cpu":
+    try:
+        torch.set_num_threads(int(os.getenv("TORCH_NUM_THREADS", "2")))
+    except Exception:
+        pass
+
 
 class PadToSquare:
     """
@@ -230,8 +237,8 @@ def predict_fiber_grade(
         device=DEVICE,
     )
 
-    # 3. Model inference
-    with torch.inference_mode():
+    # 3. Model inference (torch.no_grad is rock-solid across all ARM/x86 architectures)
+    with torch.no_grad():
         logits = _LOADED_MODEL(image_tensor, moisture_tensor)
         probabilities = F.softmax(logits.float(), dim=1)[0]
 

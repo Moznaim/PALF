@@ -137,8 +137,10 @@ class EfficientNetAttentionModel(BaseFusionModel):
         v = self.visual_proj(self.backbone(image))                           # (B, D)
         m = self.moisture_embed(self._prep_moisture(moisture))               # (B, D)
         tokens = torch.stack([v, m], dim=1) + self.type_embed                # (B, 2, D)
-        a, w = self.attn(tokens, tokens, tokens, need_weights=True)          # a: (B,2,D), w: (B,2,2)
-        self.last_attn = w.detach()
+        need_weights = self.training
+        a, w = self.attn(tokens, tokens, tokens, need_weights=need_weights)
+        if need_weights and w is not None:
+            self.last_attn = w.detach()
         x = self.attn_norm(tokens + a)
         x = self.ffn_norm(x + self.ffn(x))
         return self.classifier(x.flatten(1))                                 # (B, 2D) -> (B, 3)
