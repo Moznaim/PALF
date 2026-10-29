@@ -6,21 +6,16 @@ from typing import Optional, List, Dict
 
 try:
     from dotenv import load_dotenv
+
     _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _env_local = os.path.join(_root_dir, ".env.local")
-    # Auto-migrate stale MODEL_NAME=resnet to efficientnet if present in .env.local
-    if os.path.exists(_env_local):
-        try:
-            with open(_env_local, "r", encoding="utf-8") as _f:
-                _content = _f.read()
-            if "MODEL_NAME=resnet" in _content:
-                with open(_env_local, "w", encoding="utf-8") as _f:
-                    _f.write(_content.replace("MODEL_NAME=resnet", "MODEL_NAME=efficientnet"))
-        except Exception:
-            pass
-    # override=True ensures .env.local takes precedence over stale process/PM2 environment variables
+    _env_file = os.path.join(_root_dir, ".env")
+
+    # Load local configuration without automatically changing MODEL_NAME.
+    # .env.local takes precedence over .env and process environment variables.
     load_dotenv(_env_local, override=True)
-    load_dotenv(os.path.join(_root_dir, ".env"), override=False)
+    load_dotenv(_env_file, override=False)
+
 except ImportError:
     pass
 
@@ -49,52 +44,96 @@ MAX_IMAGE_BYTES = 15 * 1024 * 1024  # 15 MB limit
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
+
 def resolve_model_path() -> Optional[str]:
     """
-    Finds the model checkpoint to load based on:
-    1. Direct MODEL_PATH env var
-    2. MODEL_NAME / MODEL_KEY env var ('resnet' or 'efficientnet')
-    3. Auto-detection of available .pt files in backend/models/
+    Resolves the model checkpoint in this order:
+    1. Explicit MODEL_PATH, if valid.
+    2. MODEL_NAME or MODEL_KEY, defaulting to ResNet.
+    3. Automatic detection, prioritizing ResNet over EfficientNet.
+    4. Any remaining .pt checkpoint.
     """
-    # 1. Explicit path
+
+    # 1. Explicit checkpoint path takes priority.
     env_path = os.getenv("MODEL_PATH")
-    if env_path and os.path.exists(env_path):
-        logger.info(f"Using MODEL_PATH from env: {env_path}")
-        return env_path
+    if env_path:
+        if os.path.isfile(env_path):
+            logger.info(f"Using MODEL_PATH from env: {env_path}")
+            return env_path
 
-    # 2. Key-based hint (defaults to efficientnet)
-    hint = os.getenv("MODEL_NAME", os.getenv("MODEL_KEY", "efficientnet")).lower()
-    logger.info(f"Resolving model with hint MODEL_NAME='{hint}' (MODELS_DIR='{MODELS_DIR}')")
-    
-    if "efficientnet" in hint:
-        eff = glob.glob(os.path.join(MODELS_DIR, "*efficientnet*.pt"))
-        if eff: 
-            logger.info(f"Selected EfficientNet checkpoint: {eff[0]}")
-            return eff[0]
-        else:
-            logger.warning("MODEL_NAME contains 'efficientnet', but no '*efficientnet*.pt' found in models/")
-    elif "resnet" in hint:
-        res = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
-        if res: 
-            logger.info(f"Selected ResNet checkpoint: {res[0]}")
-            return res[0]
-        else:
-            logger.warning("MODEL_NAME contains 'resnet', but no '*resnet*.pt' found in models/")
+        logger.warning(
+            f"MODEL_PATH was configured but not found: {env_path}"
+        )
 
-    # 3. Auto-detect priority list (EfficientNet first, then ResNet)
-    efficientnets = glob.glob(os.path.join(MODELS_DIR, "*efficientnet*.pt"))
-    if efficientnets:
-        return efficientnets[0]
-    resnets = glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
+    # 2. Default to ResNet if no model has been configured.
+    hint = os.getenv(
+        "MODEL_NAME",
+        os.getenv("MODEL_KEY", "resnet")
+    ).strip().lower()
+
+    logger.info(
+        f"Resolving model with hint MODEL_NAME='{hint}' "
+        f"(MODELS_DIR='{MODELS_DIR}')"
+    )
+
+    # 3. Respect the explicitly selected model.
+    if "resnet" in hint:
+        candidates = sorted(
+            glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
+        )
+        if candidates:
+            logger.info(f"Selected ResNet checkpoint: {candidates[0]}")
+            return candidates[0]
+
+        logger.warning(
+            "ResNet was requested, but no '*resnet*.pt' "
+            "checkpoint was found."
+        )
+
+    elif "efficientnet" in hint:
+        candidates = sorted(
+            glob.glob(os.path.join(MODELS_DIR, "*efficientnet*.pt"))
+        )
+        if candidates:
+            logger.info(
+                f"Selected EfficientNet checkpoint: {candidates[0]}"
+            )
+            return candidates[0]
+
+        logger.warning(
+            "EfficientNet was requested, but no '*efficientnet*.pt' "
+            "checkpoint was found."
+        )
+
+    # 4. If the requested model is unavailable, prefer ResNet as fallback.
+    resnets = sorted(
+        glob.glob(os.path.join(MODELS_DIR, "*resnet*.pt"))
+    )
     if resnets:
+        logger.info(f"Using ResNet fallback: {resnets[0]}")
         return resnets[0]
 
-    # 4. Any other .pt file in models directory
-    any_pt = glob.glob(os.path.join(MODELS_DIR, "*.pt"))
-    if any_pt:
-        return any_pt[0]
+    efficientnets = sorted(
+        glob.glob(os.path.join(MODELS_DIR, "*efficientnet*.pt"))
+    )
+    if efficientnets:
+        logger.warning(
+            "No ResNet checkpoint available; falling back to EfficientNet."
+        )
+        return efficientnets[0]
+
+    # 5. Last resort: another available checkpoint.
+    other_checkpoints = sorted(
+        glob.glob(os.path.join(MODELS_DIR, "*.pt"))
+    )
+    if other_checkpoints:
+        logger.warning(
+            f"No recognized checkpoint found; using {other_checkpoints[0]}"
+        )
+        return other_checkpoints[0]
 
     return None
+
 
 
 @asynccontextmanager
