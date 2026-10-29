@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
 
@@ -28,4 +28,19 @@ class ClassifyResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class PrintReceiptRequest(BaseModel):
+    result: Dict[str, Any]
+    user: Optional[Dict[str, Any]] = None
+    imageName: Optional[str] = "N/A"
+    devicePath: Optional[str] = None
+
+
+class PrintReceiptResponse(BaseModel):
+    status: str
+    device: str
+    driver: str
+    timestamp: str
+
 

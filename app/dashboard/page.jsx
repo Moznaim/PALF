@@ -52,6 +52,29 @@ export default function Dashboard(){
   const [sensorBusy,setSensorBusy]   = useState(false);
   const [sensorErr,setSensorErr]     = useState(null);
 
+  /* thermal print state */
+  const [printing, setPrinting]      = useState(false);
+  const [printStatus, setPrintStatus]= useState(null);
+
+  const handlePrint = async (record) => {
+    if (!record || printing) return;
+    setPrinting(true);
+    setPrintStatus(null);
+    try {
+      const res = await printInspectionReceipt({
+        result: record,
+        user,
+        imageName: record.imageName || fileName || "N/A",
+      });
+      if (res?.success) {
+        setPrintStatus("✓ Receipt printed to /dev/usb/lp0!");
+        setTimeout(() => setPrintStatus(null), 4000);
+      }
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   /* ── load session + history ─────────────────────────────────── */
   useEffect(()=>{
     const s=getSession();
@@ -307,9 +330,10 @@ export default function Dashboard(){
                               <td className="py-1 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
-                                    title="Print thermal receipt"
-                                    className="text-xs text-slate-700 border border-slate-300 bg-white hover:bg-slate-100 rounded px-1.5 py-0.5 transition-colors"
-                                    onClick={()=>printInspectionReceipt({result:h,user,imageName:h.imageName||"N/A"})}>
+                                    title="Print thermal receipt (silent)"
+                                    disabled={printing}
+                                    className="text-xs text-slate-700 border border-slate-300 bg-white hover:bg-slate-100 rounded px-1.5 py-0.5 transition-colors disabled:opacity-50"
+                                    onClick={()=>handlePrint(h)}>
                                     ⎙
                                   </button>
                                   <button
@@ -535,15 +559,21 @@ export default function Dashboard(){
                     </dl>
                     <div className="mt-4 flex flex-col gap-2">
                       <div className="grid grid-cols-2 gap-2">
-                        <button className="btn-p w-full text-center"
-                          onClick={()=>printInspectionReceipt({result,user,imageName:fileName})}>
-                          ⎙ Print receipt
+                        <button className="btn-p w-full text-center disabled:opacity-50"
+                          disabled={printing}
+                          onClick={()=>handlePrint(result)}>
+                          {printing ? "Printing..." : "⎙ Print receipt"}
                         </button>
                         <button className="btn-s w-full text-center"
                           onClick={()=>generateInspectionPDF({result,user,imageName:fileName})}>
                           ↓ Save PDF
                         </button>
                       </div>
+                      {printStatus && (
+                        <p className="text-xs text-emerald-700 text-center font-medium bg-emerald-50 border border-emerald-200 py-1 rounded">
+                          {printStatus}
+                        </p>
+                      )}
                       <button className="btn-s w-full" onClick={()=>setTab("overview")}>
                         ← Back to overview
                       </button>

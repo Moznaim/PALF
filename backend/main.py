@@ -27,8 +27,15 @@ except ImportError:
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from schemas import HealthResponse, ClassifyResponse, ErrorResponse
+from schemas import (
+    HealthResponse,
+    ClassifyResponse,
+    ErrorResponse,
+    PrintReceiptRequest,
+    PrintReceiptResponse,
+)
 from inference import load_model_checkpoint, get_loaded_model_info, predict_fiber_grade
+from printer import print_receipt_escpos
 
 logging.basicConfig(
     level=logging.INFO,
@@ -258,6 +265,46 @@ async def classify_fiber(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Inference failed while processing the request.",
+        )
+
+
+@app.post(
+    "/api/print",
+    response_model=PrintReceiptResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def print_receipt(payload: PrintReceiptRequest):
+    """
+    Direct ESC/POS thermal printing to /dev/usb/lp0 (or configured device node).
+    Skips the browser print dialog completely.
+    """
+    try:
+        res = print_receipt_escpos(
+            result=payload.result,
+            user=payload.user,
+            image_name=payload.imageName or "N/A",
+            device_path=payload.devicePath,
+        )
+        return PrintReceiptResponse(**res)
+    except FileNotFoundError as fnf:
+        logger.warning(f"Printer device not found: {fnf}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(fnf))
+    except PermissionError as pe:
+        logger.error(f"Printer permission error: {pe}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission denied accessing printer. Run: sudo usermod -aG lp $USER ({pe})",
+        )
+    except Exception as e:
+        logger.error(f"Failed to print receipt: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to print receipt: {str(e)}",
         )
 
 
