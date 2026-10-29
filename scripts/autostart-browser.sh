@@ -42,15 +42,13 @@ done
 
 log "Server ready after ${elapsed}s. Launching $BROWSER (Windowed / Maximized) on $PALF_URL …"
 
-# ── 3. Launch Firefox in Window Mode (No --kiosk lock) ─────────────────────────
+# ── 3. Launch Firefox in Normal Window Mode ─────────────────────────────────
 # Flags explained:
-#   --new-window       : Opens as a normal window
-#   --private-window   : Avoids session-restore popups on power loss
+#   --new-window : Opens a clean, standard (non-private/non-incognito) window.
 #
-# Because --kiosk is omitted, the desktop taskbar and the system's default
-# on-screen keyboard icon stay fully accessible and functional!
+# Because --kiosk and --private-window are omitted, this is a standard normal
+# Firefox window where the desktop taskbar, default on-screen keyboard (Squeekboard),
+# and session preferences work without incognito restrictions.
 
-exec "$BROWSER" --new-window --private-window "$PALF_URL"
-
-exec "$BROWSER" --new-window --private-window "$PALF_URL"
+exec "$BROWSER" --new-window "$PALF_URL"
 
