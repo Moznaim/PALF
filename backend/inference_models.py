@@ -4,7 +4,9 @@ backend/inference_models.py
 Exact architecture definitions for multimodal fiber grade classification models.
 Matches the training notebook definitions from AbacaFinalVLatest POC.
 """
-
+import numpy as np
+from skimage.color import rgb2lab
+from skimage.feature import graycomatrix, graycoprops
 import torch
 import torch.nn as nn
 from torchvision import models
@@ -171,3 +173,87 @@ def build_model(
 
     model_cls = MODEL_REGISTRY[model_key]
     return model_cls(num_classes=num_classes, pretrained=pretrained)
+
+
+
+def extract_visual_metrics(image):
+    """
+    Extract measurable color and texture features
+    from a fiber-only image region.
+
+    Color: CIELAB
+    Texture: GLCM
+    """
+
+    # Convert image to RGB
+    rgb = np.asarray(
+        image.convert("RGB"),
+        dtype=np.uint8
+    )
+
+    # =====================================
+    # 1. COLOR FEATURE EXTRACTION (CIELAB)
+    # =====================================
+
+    lab = rgb2lab(rgb.astype(np.float32) / 255.0)
+
+    L = lab[:, :, 0]
+    A = lab[:, :, 1]
+    B = lab[:, :, 2]
+
+    color_metrics = {
+        "mean_L_star": round(float(L.mean()), 2),
+        "mean_a_star": round(float(A.mean()), 2),
+        "mean_b_star": round(float(B.mean()), 2),
+
+        "mean_chroma": round(
+            float(np.sqrt(A**2 + B**2).mean()), 2
+        ),
+    }
+
+    # =====================================
+    # 2. TEXTURE FEATURE EXTRACTION (GLCM)
+    # =====================================
+
+    gray = np.asarray(
+        image.convert("L").resize((224, 224)),
+        dtype=np.uint8
+    )
+
+    # Quantize grayscale to 32 levels
+    gray_q = (gray // 8).astype(np.uint8)
+
+    glcm = graycomatrix(
+        gray_q,
+        distances=[1, 3],
+        angles=[
+            0,
+            np.pi / 4,
+            np.pi / 2,
+            3 * np.pi / 4
+        ],
+        levels=32,
+        symmetric=True,
+        normed=True
+    )
+
+    def get_average(property_name):
+        values = graycoprops(glcm, property_name)
+        values = values[np.isfinite(values)]
+
+        if values.size == 0:
+            return None
+
+        return round(float(values.mean()), 4)
+
+    texture_metrics = {
+        "contrast": get_average("contrast"),
+        "homogeneity": get_average("homogeneity"),
+        "energy": get_average("energy"),
+        "correlation": get_average("correlation"),
+    }
+
+    return {
+        "color": color_metrics,
+        "texture": texture_metrics
+    }

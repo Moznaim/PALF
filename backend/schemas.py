@@ -1,6 +1,8 @@
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
+visual_metrics: Optional[Dict[str, Any]] = None
+
 
 class HealthResponse(BaseModel):
     status: str = Field(..., example="ready")
@@ -17,11 +19,17 @@ class ClassifyResponse(BaseModel):
     model: str = Field(..., example="efficientnet_b0_attention")
     grade: str = Field(..., example="Excellent")
     confidence: float = Field(..., ge=0.0, le=1.0, example=0.97)
+
     probabilities: Dict[str, float] = Field(
         ...,
         example={"Excellent": 0.97, "Good": 0.02, "Fair": 0.01}
     )
+
     moisture: float = Field(..., example=11.0)
+
+    # NEW: Color and texture measurements
+    visual_metrics: Optional[Dict[str, Any]] = None
+
     timestamp: str = Field(..., example="2026-10-10T08:00:00.000Z")
     status: str = Field("completed", example="completed")
 

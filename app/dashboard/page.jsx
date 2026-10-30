@@ -24,6 +24,34 @@ const StatCard=({label,value,sub,accent="text-emerald-700"})=>(
     {sub&&<span className="text-xs text-slate-400">{sub}</span>}
   </div>);
 
+// export async function saveInspection({
+//   userEmail,
+//   result,
+//   imageName,
+//   imageBlob
+// }) {
+//   const db = await getDb();
+
+//   return db.add("inspections", {
+//     userEmail,
+
+//     grade: result.grade,
+//     confidence: result.confidence ?? null,
+//     moisture: result.moisture,
+
+//     // NEW
+//     visualMetrics: result.visual_metrics ?? null,
+
+//     imageName: imageName ?? "N/A",
+//     imageBlob: imageBlob ?? null,
+//     model: result.model,
+//     simulated: result.simulated,
+//     status: result.status ?? "completed",
+//     timestamp: result.timestamp,
+//     savedAt: new Date().toISOString(),
+//   });
+// }
+
 /* ── main component ─────────────────────────────────────────────── */
 export default function Dashboard(){
   const router=useRouter();
@@ -31,6 +59,21 @@ export default function Dashboard(){
   const [tab,setTab]=useState("overview");
   const [dbReady,setDbReady]=useState(false);
 
+  // Dashboard statistics
+  const formatMetric = (value, digits = 2) => {
+    if (
+      value === null ||
+      value === undefined ||
+      !Number.isFinite(Number(value))
+    ) {
+      return "—";
+    }
+
+    return Number(value).toFixed(digits);
+  };
+
+
+  
   /* inspection state */
   const [state,setState]=useState("IDLE");
   const [file,setFile]=useState(null);
@@ -91,12 +134,35 @@ export default function Dashboard(){
 
   if(!user) return null;
 
+
+  
   /* ── derived ────────────────────────────────────────────────── */
-  const totalInspections = history.length;
-  const lastGrade        = history[0]?.grade??"—";
-  const gradeCounts      = GRADES.reduce((a,g)=>({...a,[g]:history.filter(h=>h.grade===g).length}),{});
-  const busy             = ["VALIDATING","PROCESSING","CLASSIFYING"].includes(state);
-  const sim              = MODE.model==="MOCK";
+
+
+/* ── derived ───────────────────────────────────────── */
+
+/* ── derived ───────────────────────────────── */
+
+const visualMetrics =
+  result?.visual_metrics ??
+  result?.visualMetrics ??
+  null;
+
+const totalInspections = history?.length ?? 0;
+
+const lastGrade = history?.[0]?.grade ?? "—";
+
+const gradeCounts = GRADES.reduce(
+  (a, g) => ({
+    ...a,
+    [g]: history.filter(h => h.grade === g).length
+  }),
+  {}
+);
+
+const busy = ["VALIDATING", "PROCESSING", "CLASSIFYING"].includes(state);
+
+const sim = MODE.model === "MOCK";
 
   /* ── camera handlers ────────────────────────────────────────── */
   async function openCamera(){
@@ -557,6 +623,98 @@ export default function Dashboard(){
                       <dt className="text-slate-500">Record saved</dt>
                       <dd className="num text-emerald-700 text-xs">✓ Stored on device</dd>
                     </dl>
+                    {/* COLOR AND TEXTURE MEASUREMENTS */}
+                    {visualMetrics && (
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                        {/* COLOR ANALYSIS */}
+                        <section className="rounded-lg border border-slate-200 p-3">
+                          <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                            Color Measurements
+                          </h3>
+
+                          <p className="text-[10px] text-slate-400 mb-2">
+                            CIELAB COLOR SPACE
+                          </p>
+
+                          <dl className="space-y-2 text-xs">
+
+                            <div className="flex justify-between">
+                              <dt className="text-slate-500">Lightness (L*)</dt>
+                              <dd className="num font-semibold">
+                                {formatMetric(visualMetrics.color?.mean_L_star)}
+                              </dd>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <dt className="text-slate-500">Red-Green (a*)</dt>
+                              <dd className="num font-semibold">
+                                {formatMetric(visualMetrics.color?.mean_a_star)}
+                              </dd>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <dt className="text-slate-500">Yellow-Blue (b*)</dt>
+                              <dd className="num font-semibold">
+                                {formatMetric(visualMetrics.color?.mean_b_star)}
+                              </dd>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <dt className="text-slate-500">Chroma (C*)</dt>
+                              <dd className="num font-semibold">
+                                {formatMetric(visualMetrics.color?.mean_chroma)}
+                              </dd>
+                            </div>
+
+                          </dl>
+                        </section>
+
+                        {/* TEXTURE ANALYSIS */}
+                        <section className="rounded-lg border border-slate-200 p-3">
+                          <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                            Texture Measurements
+                          </h3>
+
+                          <p className="text-[10px] text-slate-400 mb-2">
+                            GRAY-LEVEL CO-OCCURRENCE MATRIX
+                          </p>
+
+                          <dl className="space-y-2 text-xs">
+
+                            <div className="flex justify-between">
+                              <dt className="text-slate-500">Contrast</dt>
+                              <dd className="num font-semibold">
+                                {formatMetric(visualMetrics.texture?.contrast, 4)}
+                              </dd>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <dt className="text-slate-500">Homogeneity</dt>
+                              <dd className="num font-semibold">
+                                {formatMetric(visualMetrics.texture?.homogeneity, 4)}
+                              </dd>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <dt className="text-slate-500">Energy</dt>
+                              <dd className="num font-semibold">
+                                {formatMetric(visualMetrics.texture?.energy, 4)}
+                              </dd>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <dt className="text-slate-500">Correlation</dt>
+                              <dd className="num font-semibold">
+                                {formatMetric(visualMetrics.texture?.correlation, 4)}
+                              </dd>
+                            </div>
+
+                          </dl>
+                        </section>
+
+                      </div>
+                    )}
                     <div className="mt-4 flex flex-col gap-2">
                       <div className="grid grid-cols-2 gap-2">
                         <button className="btn-p w-full text-center disabled:opacity-50"
