@@ -1,27 +1,39 @@
+
 """
 backend/printer.py
 
-Direct thermal receipt printer service for PALF-Vision AI on Raspberry Pi.
-Formats inspection results into ESC/POS thermal printer commands and transmits
-them directly to the printer character device node (defaults to /dev/usb/lp0),
-bypassing the browser print dialog completely.
+Plain-text thermal receipt printer service for PALF-Vision AI on Raspberry Pi.
+
+Formats inspection results into a temporary TXT file and submits it to
+the configured CUPS printer queue. This bypasses the browser print dialog
+and uses the working Generic Text-Only Printer queue.
 """
 
 import os
+import re
 import logging
+import tempfile
+import subprocess
 from datetime import datetime
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger("palf_printer")
 
-DEFAULT_PRINTER_DEVICE = os.getenv("PRINTER_DEV", "/dev/usb/lp0")
+# Existing CUPS queue confirmed to print readable text.
+DEFAULT_PRINTER_QUEUE = os.getenv("PRINTER_QUEUE", "PrintReceipt")
 
-try:
-    from escpos.printer import File as EscposFile
-    HAS_ESCPOS = True
-except ImportError:
-    HAS_ESCPOS = False
-    logger.info("python-escpos not imported; using high-speed raw ESC/POS binary driver.")
+
+def _safe_text(value: Any) -> str:
+    """Keep receipt values on a single line."""
+    return str(value).replace("\r", " ").replace("\n", " ")
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    """Safely convert values to float."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def print_receipt_escpos(
@@ -31,163 +43,182 @@ def print_receipt_escpos(
     device_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Sends inspection slip directly to the USB thermal printer node (/dev/usb/lp0).
-    Skips the OS / browser print dialog entirely.
+    Creates a plain-text inspection receipt and sends it to CUPS.
+
+    The device_path argument is retained for compatibility with existing
+    callers. The actual printer is selected through the CUPS queue.
     """
-    target_device = device_path or DEFAULT_PRINTER_DEVICE
 
-    # 1. Verify printer device existence
-    if not os.path.exists(target_device):
-        logger.warning(f"Thermal printer device node '{target_device}' does not exist.")
-        raise FileNotFoundError(
-            f"Thermal printer not detected at '{target_device}'. "
-            "Ensure printer is powered on and plugged into the Raspberry Pi USB port."
-        )
+    target_queue = DEFAULT_PRINTER_QUEUE
 
-    # 2. Extract inspection fields
-    grade = str(result.get("grade", "UNKNOWN")).upper()
-    confidence = float(result.get("confidence", 0.0))
-    moisture = float(result.get("moisture", 0.0))
-    model_name = str(result.get("model", "PALF-Vision AI"))
+    # 1. Extract inspection fields
+    grade = _safe_text(result.get("grade", "UNKNOWN")).upper()
+    confidence = _to_float(result.get("confidence", 0.0))
+    moisture = _to_float(result.get("moisture", 0.0))
+    model_name = _safe_text(result.get("model", "PALF-Vision AI"))
+
     probs = result.get("probabilities", {})
-    user_name = (user.get("name") if user else None) or "Inspector"
-    user_email = (user.get("email") if user else None) or ""
 
+    user_name = _safe_text(
+        (user.get("name") if user else None) or "Inspector"
+    )
+    user_email = _safe_text(
+        (user.get("email") if user else None) or ""
+    )
+    image_name = _safe_text(image_name)
+
+    # 2. Format timestamp
     raw_ts = result.get("timestamp")
+
     try:
         if raw_ts:
-            dt = datetime.fromisoformat(str(raw_ts).replace("Z", "+00:00"))
+            dt = datetime.fromisoformat(
+                str(raw_ts).replace("Z", "+00:00")
+            )
             formatted_date = dt.strftime("%Y-%m-%d %H:%M:%S")
         else:
-            formatted_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            formatted_date = datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
     except Exception:
-        formatted_date = str(raw_ts or datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        formatted_date = str(
+            raw_ts or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
 
-    # 3. Print using python-escpos if available
-    if HAS_ESCPOS:
-        try:
-            logger.info(f"Printing receipt to '{target_device}' via python-escpos...")
-            printer = EscposFile(target_device)
+    # 3. Build receipt as plain text (32-character receipt width)
+    width = 32
+    separator = "-" * width
 
-            # Header
-            printer.set(align="center", bold=True, double_height=True, double_width=True)
-            printer.text("PALF-VISION AI\n")
-            printer.set(align="center", bold=False, double_height=False, double_width=False)
-            printer.text("Fiber Quality Inspection\n")
-            printer.text("--------------------------------\n")
+    receipt_lines = [
+        "PALF-VISION AI".center(width),
+        "Fiber Quality Inspection".center(width),
+        separator,
+        f"Date:      {formatted_date}",
+        f"Inspector: {user_name}",
+    ]
 
-            # Metadata
-            printer.set(align="left")
-            printer.text(f"Date:      {formatted_date}\n")
-            printer.text(f"Inspector: {user_name}\n")
-            if user_email:
-                printer.text(f"Email:     {user_email}\n")
-            printer.text(f"Sample:    {image_name}\n")
-            printer.text(f"Moisture:  {moisture:.1f}%\n")
-            printer.text("--------------------------------\n")
-
-            # Classification Grade
-            printer.set(align="center")
-            printer.text("CLASSIFICATION RESULT\n")
-            printer.set(align="center", bold=True, double_height=True, double_width=True)
-            printer.text(f"{grade}\n")
-            printer.set(align="left", bold=False, double_height=False, double_width=False)
-            printer.text(f"Confidence:  {confidence * 100:.2f}%\n")
-            printer.text("--------------------------------\n")
-
-            # Probabilities breakdown
-            if probs and isinstance(probs, dict):
-                printer.text("Probabilities:\n")
-                for c_name, p_val in probs.items():
-                    pct = float(p_val) * 100
-                    printer.text(f"  {c_name:<10}: {pct:>8.2f}%\n")
-                printer.text("--------------------------------\n")
-
-            # Footer
-            printer.text(f"Model: {model_name}\n")
-            printer.set(align="center")
-            printer.text("================================\n")
-            printer.text("*** END OF INSPECTION SLIP ***\n\n\n\n")
-
-            try:
-                printer.cut()
-            except Exception:
-                pass
-
-            printer.close()
-            logger.info("Receipt successfully printed via python-escpos.")
-            return {
-                "status": "printed",
-                "device": target_device,
-                "driver": "python-escpos",
-                "timestamp": formatted_date,
-            }
-        except Exception as e:
-            logger.warning(f"python-escpos printing encountered '{e}'; attempting raw ESC/POS fallback...")
-
-    # 4. Fallback: Raw binary ESC/POS stream writer
-    logger.info(f"Writing raw ESC/POS binary stream to '{target_device}'...")
-    ESC = b"\x1b"
-    GS = b"\x1d"
-
-    INIT = ESC + b"@"
-    ALIGN_LEFT = ESC + b"a\x00"
-    ALIGN_CENTER = ESC + b"a\x01"
-    BOLD_ON = ESC + b"E\x01"
-    BOLD_OFF = ESC + b"E\x00"
-    DOUBLE_SIZE = GS + b"!\x11"
-    NORMAL_SIZE = GS + b"!\x00"
-    FEED_CUT = GS + b"V\x41\x10"
-
-    buf = bytearray()
-    buf.extend(INIT)
-
-    # Header
-    buf.extend(ALIGN_CENTER + BOLD_ON + DOUBLE_SIZE + b"PALF-VISION AI\n")
-    buf.extend(NORMAL_SIZE + BOLD_OFF + b"Fiber Quality Inspection\n")
-    buf.extend(b"--------------------------------\n")
-
-    # Metadata
-    buf.extend(ALIGN_LEFT)
-    buf.extend(f"Date:      {formatted_date}\n".encode("utf-8", "replace"))
-    buf.extend(f"Inspector: {user_name}\n".encode("utf-8", "replace"))
     if user_email:
-        buf.extend(f"Email:     {user_email}\n".encode("utf-8", "replace"))
-    buf.extend(f"Sample:    {image_name}\n".encode("utf-8", "replace"))
-    buf.extend(f"Moisture:  {moisture:.1f}%\n".encode("utf-8", "replace"))
-    buf.extend(b"--------------------------------\n")
+        receipt_lines.append(f"Email:     {user_email}")
 
-    # Result
-    buf.extend(ALIGN_CENTER + b"CLASSIFICATION RESULT\n")
-    buf.extend(BOLD_ON + DOUBLE_SIZE + f"{grade}\n".encode("utf-8", "replace"))
-    buf.extend(NORMAL_SIZE + BOLD_OFF + ALIGN_LEFT)
-    buf.extend(f"Confidence:  {confidence * 100:.2f}%\n".encode("utf-8", "replace"))
-    buf.extend(b"--------------------------------\n")
+    receipt_lines.extend([
+        f"Sample:    {image_name}",
+        f"Moisture:  {moisture:.1f}%",
+        separator,
+        "",
+        "CLASSIFICATION RESULT".center(width),
+        grade.center(width),
+        f"Confidence: {confidence * 100:.2f}%",
+        separator,
+    ])
 
-    # Probabilities
-    if probs and isinstance(probs, dict):
-        buf.extend(b"Probabilities:\n")
-        for c_name, p_val in probs.items():
-            pct = float(p_val) * 100
-            buf.extend(f"  {c_name:<10}: {pct:>8.2f}%\n".encode("utf-8", "replace"))
-        buf.extend(b"--------------------------------\n")
+    # 4. Add classification probabilities
+    if isinstance(probs, dict) and probs:
+        receipt_lines.append("Probabilities:")
 
-    # Footer
-    buf.extend(f"Model: {model_name}\n".encode("utf-8", "replace"))
-    buf.extend(ALIGN_CENTER)
-    buf.extend(b"================================\n")
-    buf.extend(b"*** END OF INSPECTION SLIP ***\n\n\n\n")
-    buf.extend(FEED_CUT)
+        for class_name, probability in probs.items():
+            pct = _to_float(probability) * 100
+            class_name = _safe_text(class_name)
+            receipt_lines.append(
+                f"  {class_name:<10}: {pct:>8.2f}%"
+            )
 
-    with open(target_device, "wb") as f:
-        f.write(buf)
-        f.flush()
+        receipt_lines.append(separator)
 
-    logger.info("Receipt successfully printed via raw ESC/POS driver.")
-    return {
-        "status": "printed",
-        "device": target_device,
-        "driver": "raw-escpos",
-        "timestamp": formatted_date,
-    }
+    # 5. Footer
+    receipt_lines.extend([
+        f"Model: {model_name}",
+        "",
+        "=" * width,
+        "*** END OF INSPECTION SLIP ***".center(width),
+        "",
+        "",
+        "",
+    ])
 
+    receipt_text = "\n".join(receipt_lines)
+
+    # 6. Save receipt temporarily as TXT and submit it to CUPS
+    temp_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="ascii",
+            errors="replace",
+            newline="\n",
+            suffix=".txt",
+            prefix="palf_receipt_",
+            delete=False,
+        ) as temp_file:
+            temp_path = temp_file.name
+            temp_file.write(receipt_text)
+
+        logger.info(
+            "Submitting text receipt to CUPS queue '%s'...",
+            target_queue,
+        )
+
+        completed = subprocess.run(
+            ["lp", "-d", target_queue, temp_path],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+
+        # Extract the CUPS job ID from the command output.
+        match = re.search(
+            r"request id is (\S+)",
+            completed.stdout,
+        )
+        job_id = match.group(1) if match else None
+
+        logger.info(
+            "Receipt successfully submitted to CUPS. Job ID: %s",
+            job_id or "unknown",
+        )
+
+        return {
+            "status": "printed",
+            "queue_status": "queued",
+            "device": target_queue,
+            "queue": target_queue,
+            "driver": "cups-text",
+            "job_id": job_id,
+            "timestamp": formatted_date,
+        }
+
+    except subprocess.CalledProcessError as e:
+        error_message = (e.stderr or e.stdout or str(e)).strip()
+        logger.error("CUPS printing failed: %s", error_message)
+
+        raise RuntimeError(
+            f"Failed to submit receipt to CUPS queue "
+            f"'{target_queue}': {error_message}"
+        ) from e
+
+    except subprocess.TimeoutExpired as e:
+        logger.error("CUPS printing timed out.")
+
+        raise RuntimeError(
+            "Timed out while submitting the receipt to CUPS."
+        ) from e
+
+    except FileNotFoundError as e:
+        logger.error("CUPS 'lp' command was not found.")
+
+        raise RuntimeError(
+            "CUPS printing command 'lp' was not found. "
+            "Ensure CUPS client utilities are installed."
+        ) from e
+
+    finally:
+        # 7. Remove temporary TXT file after submission
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError as e:
+                logger.warning(
+                    "Could not remove temporary receipt file: %s",
+                    e,
+                )
