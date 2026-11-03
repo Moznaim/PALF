@@ -396,6 +396,12 @@ const sim = MODE.model === "MOCK";
                               <td className="py-1 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
+                                    title="View full inspection details and measurements"
+                                    className="text-xs text-slate-700 border border-slate-300 bg-white hover:bg-slate-100 rounded px-1.5 py-0.5 transition-colors"
+                                    onClick={()=>{setResult(h);setTab("inspect");}}>
+                                    View
+                                  </button>
+                                  <button
                                     title="Print thermal receipt (silent)"
                                     disabled={printing}
                                     className="text-xs text-slate-700 border border-slate-300 bg-white hover:bg-slate-100 rounded px-1.5 py-0.5 transition-colors disabled:opacity-50"
@@ -623,96 +629,195 @@ const sim = MODE.model === "MOCK";
                       <dt className="text-slate-500">Record saved</dt>
                       <dd className="num text-emerald-700 text-xs">✓ Stored on device</dd>
                     </dl>
-                    {/* COLOR AND TEXTURE MEASUREMENTS */}
-                    {visualMetrics && (
-                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-                        {/* COLOR ANALYSIS */}
-                        <section className="rounded-lg border border-slate-200 p-3">
-                          <h3 className="text-sm font-semibold text-slate-800 mb-3">
-                            Color Measurements
-                          </h3>
-
-                          <p className="text-[10px] text-slate-400 mb-2">
-                            CIELAB COLOR SPACE
+                    {/* ── MEASURED COLOR & BUNDLE TEXTURE CHARACTERISTICS ── */}
+                    {visualMetrics ? (
+                      <div className="mt-4 space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                          <p className="text-xs font-semibold text-slate-800 tracking-wide uppercase">
+                            Bundle Visual Measurements
                           </p>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
+                            {visualMetrics.status === "ok" ? "Valid ROI" : (visualMetrics.status ?? "Processed")}
+                          </span>
+                        </div>
 
-                          <dl className="space-y-2 text-xs">
-
-                            <div className="flex justify-between">
-                              <dt className="text-slate-500">Lightness (L*)</dt>
-                              <dd className="num font-semibold">
-                                {formatMetric(visualMetrics.color?.mean_L_star)}
-                              </dd>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* 1. COLOR MEASUREMENTS (CIELAB) */}
+                          <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                Color (CIELAB)
+                              </h3>
+                              <div
+                                title={`Representative color swatch: ${visualMetrics.color?.hex_color || "#e0d8cc"}`}
+                                className="w-5 h-5 rounded-full border border-slate-300 shadow-inner"
+                                style={{ backgroundColor: visualMetrics.color?.hex_color || "#e0d8cc" }}
+                              />
                             </div>
+                            <p className="text-[10px] text-slate-400 mb-2">
+                              ISO/CIE 11664-4:2019 D65
+                            </p>
+                            <dl className="space-y-1.5 text-xs">
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Lightness (L*)</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.color?.l_star ?? visualMetrics.color?.mean_L_star)}
+                                  {visualMetrics.color?.l_star_std != null && (
+                                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                      ±{formatMetric(visualMetrics.color.l_star_std)}
+                                    </span>
+                                  )}
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Red-Green (a*)</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.color?.a_star ?? visualMetrics.color?.mean_a_star)}
+                                  {visualMetrics.color?.a_star_std != null && (
+                                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                      ±{formatMetric(visualMetrics.color.a_star_std)}
+                                    </span>
+                                  )}
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Yellow-Blue (b*)</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.color?.b_star ?? visualMetrics.color?.mean_b_star)}
+                                  {visualMetrics.color?.b_star_std != null && (
+                                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                      ±{formatMetric(visualMetrics.color.b_star_std)}
+                                    </span>
+                                  )}
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Chroma (C*)</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.color?.chroma ?? visualMetrics.color?.mean_chroma)}
+                                </dd>
+                              </div>
+                            </dl>
+                            <p className="text-[10px] text-slate-400 italic mt-2.5 pt-1.5 border-t border-slate-100">
+                              Camera-derived measurements · Calibration pending
+                            </p>
+                          </section>
 
-                            <div className="flex justify-between">
-                              <dt className="text-slate-500">Red-Green (a*)</dt>
-                              <dd className="num font-semibold">
-                                {formatMetric(visualMetrics.color?.mean_a_star)}
-                              </dd>
+                          {/* 2. TEXTURE MEASUREMENTS (GLCM) */}
+                          <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-0.5">
+                              Bundle Texture
+                            </h3>
+                            <p className="text-[10px] text-slate-400 mb-2">
+                              GLCM (16 levels · 4 directions avg)
+                            </p>
+                            <dl className="space-y-1.5 text-xs">
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Contrast</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.texture?.contrast, 4)}
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Homogeneity</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.texture?.homogeneity, 4)}
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Energy (ASM)</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.texture?.energy, 4)}
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Entropy</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.texture?.entropy, 4)}
+                                </dd>
+                              </div>
+                            </dl>
+                            <p className="text-[10px] text-slate-400 italic mt-2.5 pt-1.5 border-t border-slate-100">
+                              Haralick spatial gray-level distribution
+                            </p>
+                          </section>
+
+                          {/* 3. BUNDLE UNIFORMITY (3x3 REGIONAL ANALYSIS) */}
+                          <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                Bundle Uniformity
+                              </h3>
+                              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded">
+                                {visualMetrics.uniformity?.valid_regions ?? 0}/9 regions
+                              </span>
                             </div>
+                            <p className="text-[10px] text-slate-400 mb-2">
+                              3 × 3 Regional Grid Analysis
+                            </p>
+                            <dl className="space-y-1.5 text-xs">
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Contrast (Mean ± SD)</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.uniformity?.contrast_mean, 4)}
+                                  <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                    ±{formatMetric(visualMetrics.uniformity?.contrast_std, 4)}
+                                  </span>
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Homogeneity (Mean ± SD)</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.uniformity?.homogeneity_mean, 4)}
+                                  <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                    ±{formatMetric(visualMetrics.uniformity?.homogeneity_std, 4)}
+                                  </span>
+                                </dd>
+                              </div>
+                            </dl>
+                            <p className="text-[10px] text-slate-400 italic mt-2.5 pt-1.5 border-t border-slate-100">
+                              Regional texture variation · Not physical softness
+                            </p>
+                          </section>
 
-                            <div className="flex justify-between">
-                              <dt className="text-slate-500">Yellow-Blue (b*)</dt>
-                              <dd className="num font-semibold">
-                                {formatMetric(visualMetrics.color?.mean_b_star)}
-                              </dd>
+                          {/* 4. IMAGE QUALITY & FOCUS */}
+                          <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                Image Quality
+                              </h3>
+                              <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded">
+                                {visualMetrics.image_quality?.status || "unvalidated"}
+                              </span>
                             </div>
-
-                            <div className="flex justify-between">
-                              <dt className="text-slate-500">Chroma (C*)</dt>
-                              <dd className="num font-semibold">
-                                {formatMetric(visualMetrics.color?.mean_chroma)}
-                              </dd>
-                            </div>
-
-                          </dl>
-                        </section>
-
-                        {/* TEXTURE ANALYSIS */}
-                        <section className="rounded-lg border border-slate-200 p-3">
-                          <h3 className="text-sm font-semibold text-slate-800 mb-3">
-                            Texture Measurements
-                          </h3>
-
-                          <p className="text-[10px] text-slate-400 mb-2">
-                            GRAY-LEVEL CO-OCCURRENCE MATRIX
-                          </p>
-
-                          <dl className="space-y-2 text-xs">
-
-                            <div className="flex justify-between">
-                              <dt className="text-slate-500">Contrast</dt>
-                              <dd className="num font-semibold">
-                                {formatMetric(visualMetrics.texture?.contrast, 4)}
-                              </dd>
-                            </div>
-
-                            <div className="flex justify-between">
-                              <dt className="text-slate-500">Homogeneity</dt>
-                              <dd className="num font-semibold">
-                                {formatMetric(visualMetrics.texture?.homogeneity, 4)}
-                              </dd>
-                            </div>
-
-                            <div className="flex justify-between">
-                              <dt className="text-slate-500">Energy</dt>
-                              <dd className="num font-semibold">
-                                {formatMetric(visualMetrics.texture?.energy, 4)}
-                              </dd>
-                            </div>
-
-                            <div className="flex justify-between">
-                              <dt className="text-slate-500">Correlation</dt>
-                              <dd className="num font-semibold">
-                                {formatMetric(visualMetrics.texture?.correlation, 4)}
-                              </dd>
-                            </div>
-
-                          </dl>
-                        </section>
-
+                            <p className="text-[10px] text-slate-400 mb-2">
+                              Laplacian Variance Focus Metric
+                            </p>
+                            <dl className="space-y-1.5 text-xs">
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Sharpness Score</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.image_quality?.laplacian_variance, 1)}
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">Optical Validity</dt>
+                                <dd className="text-emerald-700 font-medium">
+                                  {Number(visualMetrics.image_quality?.laplacian_variance) > 50 ? "Clear Focus" : "Check Focus"}
+                                </dd>
+                              </div>
+                            </dl>
+                            <p className="text-[10px] text-slate-400 italic mt-2.5 pt-1.5 border-t border-slate-100">
+                              Optical sharpness only · Not physical fiber roughness
+                            </p>
+                          </section>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 p-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 text-center">
+                        <p className="text-xs text-slate-400">
+                          Color and texture measurements not available for this inspection record.
+                        </p>
                       </div>
                     )}
                     <div className="mt-4 flex flex-col gap-2">

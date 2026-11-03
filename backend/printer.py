@@ -166,6 +166,20 @@ def print_receipt_escpos(
             add_line(f"  {_safe_text(class_name)}: {percentage:.2f}%")
         add_line(separator)
 
+    # Visual Metrics (Color & Texture)
+    vm = result.get("visual_metrics") or result.get("visualMetrics")
+    if isinstance(vm, dict) and vm.get("status") in ("ok", "warning_low_fiber_coverage"):
+        color = vm.get("color")
+        texture = vm.get("texture")
+        uniformity = vm.get("uniformity")
+        if color:
+            add_line(f"CIELAB: L*={color.get('l_star', 'N/A')} a*={color.get('a_star', 'N/A')} b*={color.get('b_star', 'N/A')}")
+        if texture:
+            add_line(f"GLCM: Cont={texture.get('contrast', 'N/A')} Hom={texture.get('homogeneity', 'N/A')}")
+        if uniformity and uniformity.get("valid_regions"):
+            add_line(f"Uniformity: {uniformity.get('valid_regions')}/9 regions")
+        add_line(separator)
+
     # Footer
     add_line(f"Model: {model_name}")
     lines.append("=" * RECEIPT_WIDTH)
