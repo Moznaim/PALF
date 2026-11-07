@@ -148,6 +148,23 @@ const visualMetrics =
   result?.visualMetrics ??
   null;
 
+const colorAnalysis =
+  result?.color_analysis ??
+  result?.colorAnalysis ??
+  null;
+
+const textureAnalysis =
+  result?.texture_analysis ??
+  result?.textureAnalysis ??
+  null;
+
+const topColorMatch =
+  colorAnalysis?.candidate_matches?.find((m) => m.is_candidate) ??
+  colorAnalysis?.candidate_matches?.[0] ??
+  null;
+
+const matchedColorLabel = topColorMatch?.color_label ?? null;
+
 const totalInspections = history?.length ?? 0;
 
 const lastGrade = history?.[0]?.grade ?? "—";
@@ -642,11 +659,11 @@ const sim = MODE.model === "MOCK";
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* 1. COLOR MEASUREMENTS (CIELAB) */}
+                          {/* 1. COLOR MEASUREMENTS (CIELAB & CANDIDATE FIT) */}
                           <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
                             <div className="flex items-center justify-between mb-2">
                               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                                Color (CIELAB)
+                                Color {matchedColorLabel ? `(${matchedColorLabel})` : "(CIELAB)"}
                               </h3>
                               <div
                                 title={`Representative color swatch: ${visualMetrics.color?.hex_color || "#e0d8cc"}`}
@@ -655,12 +672,19 @@ const sim = MODE.model === "MOCK";
                               />
                             </div>
                             <p className="text-[10px] text-slate-400 mb-2">
-                              ISO/CIE 11664-4:2019 D65
+                              {topColorMatch?.pns_pid ? `${topColorMatch.pns_pid} Candidate Reference Range` : "ISO/CIE 11664-4:2019 D65"}
                             </p>
-                            <dl className="space-y-1.5 text-xs">
-                              <div className="flex justify-between">
-                                <dt className="text-slate-500">Lightness (L*)</dt>
-                                <dd className="num font-semibold">
+                            <dl className="space-y-2 text-xs">
+                              <div className="flex justify-between items-baseline">
+                                <div>
+                                  <dt className="text-slate-600 font-medium">Lightness (L*)</dt>
+                                  {topColorMatch?.channel_details?.L_star?.reference_p05 != null && (
+                                    <span className="text-[10px] text-slate-400 block font-mono">
+                                      ref: {formatMetric(topColorMatch.channel_details.L_star.reference_p05, 1)} – {formatMetric(topColorMatch.channel_details.L_star.reference_p95, 1)}
+                                    </span>
+                                  )}
+                                </div>
+                                <dd className="num font-semibold text-right">
                                   {formatMetric(visualMetrics.color?.l_star ?? visualMetrics.color?.mean_L_star)}
                                   {visualMetrics.color?.l_star_std != null && (
                                     <span className="text-[10px] text-slate-400 font-normal ml-1">
@@ -669,9 +693,17 @@ const sim = MODE.model === "MOCK";
                                   )}
                                 </dd>
                               </div>
-                              <div className="flex justify-between">
-                                <dt className="text-slate-500">Red-Green (a*)</dt>
-                                <dd className="num font-semibold">
+
+                              <div className="flex justify-between items-baseline">
+                                <div>
+                                  <dt className="text-slate-600 font-medium">Red-Green (a*)</dt>
+                                  {topColorMatch?.channel_details?.a_star?.reference_p05 != null && (
+                                    <span className="text-[10px] text-slate-400 block font-mono">
+                                      ref: {formatMetric(topColorMatch.channel_details.a_star.reference_p05, 1)} – {formatMetric(topColorMatch.channel_details.a_star.reference_p95, 1)}
+                                    </span>
+                                  )}
+                                </div>
+                                <dd className="num font-semibold text-right">
                                   {formatMetric(visualMetrics.color?.a_star ?? visualMetrics.color?.mean_a_star)}
                                   {visualMetrics.color?.a_star_std != null && (
                                     <span className="text-[10px] text-slate-400 font-normal ml-1">
@@ -680,9 +712,17 @@ const sim = MODE.model === "MOCK";
                                   )}
                                 </dd>
                               </div>
-                              <div className="flex justify-between">
-                                <dt className="text-slate-500">Yellow-Blue (b*)</dt>
-                                <dd className="num font-semibold">
+
+                              <div className="flex justify-between items-baseline">
+                                <div>
+                                  <dt className="text-slate-600 font-medium">Yellow-Blue (b*)</dt>
+                                  {topColorMatch?.channel_details?.b_star?.reference_p05 != null && (
+                                    <span className="text-[10px] text-slate-400 block font-mono">
+                                      ref: {formatMetric(topColorMatch.channel_details.b_star.reference_p05, 1)} – {formatMetric(topColorMatch.channel_details.b_star.reference_p95, 1)}
+                                    </span>
+                                  )}
+                                </div>
+                                <dd className="num font-semibold text-right">
                                   {formatMetric(visualMetrics.color?.b_star ?? visualMetrics.color?.mean_b_star)}
                                   {visualMetrics.color?.b_star_std != null && (
                                     <span className="text-[10px] text-slate-400 font-normal ml-1">
@@ -691,9 +731,10 @@ const sim = MODE.model === "MOCK";
                                   )}
                                 </dd>
                               </div>
-                              <div className="flex justify-between">
-                                <dt className="text-slate-500">Chroma (C*)</dt>
-                                <dd className="num font-semibold">
+
+                              <div className="flex justify-between items-baseline pt-0.5">
+                                <dt className="text-slate-600 font-medium">Chroma (C*)</dt>
+                                <dd className="num font-semibold text-right">
                                   {formatMetric(visualMetrics.color?.chroma ?? visualMetrics.color?.mean_chroma)}
                                 </dd>
                               </div>
@@ -725,9 +766,15 @@ const sim = MODE.model === "MOCK";
                                 </dd>
                               </div>
                               <div className="flex justify-between">
-                                <dt className="text-slate-500">Energy (ASM)</dt>
+                                <dt className="text-slate-500">Energy (√ASM)</dt>
                                 <dd className="num font-semibold">
                                   {formatMetric(visualMetrics.texture?.energy, 4)}
+                                </dd>
+                              </div>
+                              <div className="flex justify-between">
+                                <dt className="text-slate-500">ASM (Angular 2nd Moment)</dt>
+                                <dd className="num font-semibold">
+                                  {formatMetric(visualMetrics.texture?.asm, 4)}
                                 </dd>
                               </div>
                               <div className="flex justify-between">
@@ -812,6 +859,167 @@ const sim = MODE.model === "MOCK";
                             </p>
                           </section>
                         </div>
+
+                        {/* ── TEXTURE ANALYSIS (Experimental Threshold Assessment) ── */}
+                        {textureAnalysis && textureAnalysis.status !== "error" && (
+                          <div className="mt-3 space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                              <p className="text-xs font-semibold text-slate-800 tracking-wide uppercase">
+                                Texture Analysis
+                              </p>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                                textureAnalysis.status === "available"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}>
+                                {textureAnalysis.status === "available" ? "Assessment Available" : (textureAnalysis.status ?? "Pending")}
+                              </span>
+                            </div>
+
+                            {/* Texture Assessment Result */}
+                            {textureAnalysis.status === "available" && textureAnalysis.predicted_texture && (
+                              <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+                                  Texture Assessment
+                                </h3>
+                                <dl className="space-y-1.5 text-xs">
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Predicted Texture</dt>
+                                    <dd className="font-bold text-slate-800">
+                                      {textureAnalysis.display_name || textureAnalysis.predicted_texture}
+                                    </dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Associated Grade</dt>
+                                    <dd className="font-semibold text-slate-700">
+                                      {textureAnalysis.associated_grade ?? "—"}
+                                    </dd>
+                                  </div>
+                                  {textureAnalysis.pns_code && (
+                                    <div className="flex justify-between">
+                                      <dt className="text-slate-500">PNS Reference</dt>
+                                      <dd className="font-mono text-slate-600 text-[11px]">
+                                        {textureAnalysis.pns_code}
+                                      </dd>
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Rule Used</dt>
+                                    <dd className="font-mono text-slate-600 text-[10px] max-w-[180px] text-right truncate" title={textureAnalysis.threshold_details?.rule_id ?? ""}>
+                                      {textureAnalysis.threshold_details?.rule_id ?? "—"}
+                                    </dd>
+                                  </div>
+                                </dl>
+                                {/* CNN vs Texture disagreement notice */}
+                                {result?.grade && textureAnalysis.associated_grade &&
+                                  result.grade !== textureAnalysis.associated_grade && (
+                                  <div className="mt-2 p-2 rounded bg-amber-50 border border-amber-200">
+                                    <p className="text-[10px] text-amber-800">
+                                      ⓘ Texture assessment differs from the CNN classification. Review the image-derived measurements.
+                                    </p>
+                                  </div>
+                                )}
+                                <p className="text-[10px] text-slate-400 italic mt-2.5 pt-1.5 border-t border-slate-100">
+                                  Experimental candidate threshold · Does not alter CNN grade
+                                </p>
+                              </section>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {/* Fiber Orientation */}
+                              <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-0.5">
+                                  Fiber Orientation
+                                </h3>
+                                <p className="text-[10px] text-slate-400 mb-2">
+                                  Structure Tensor Analysis
+                                </p>
+                                <dl className="space-y-1.5 text-xs">
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Orientation Conc.</dt>
+                                    <dd className="num font-semibold">
+                                      {formatMetric(visualMetrics.structure_tensor?.orientation_concentration, 4)}
+                                    </dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Orientation Spread</dt>
+                                    <dd className="num font-semibold">
+                                      {formatMetric(visualMetrics.structure_tensor?.orientation_spread_deg, 2)}°
+                                    </dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Regional Conc. (Mean ± SD)</dt>
+                                    <dd className="num font-semibold">
+                                      {formatMetric(visualMetrics.structure_tensor?.orientation_concentration_regional_mean, 4)}
+                                      {visualMetrics.structure_tensor?.orientation_concentration_regional_sd != null && (
+                                        <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                          ±{formatMetric(visualMetrics.structure_tensor.orientation_concentration_regional_sd, 4)}
+                                        </span>
+                                      )}
+                                    </dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Regional Spread (Mean ± SD)</dt>
+                                    <dd className="num font-semibold">
+                                      {formatMetric(visualMetrics.structure_tensor?.orientation_spread_deg_regional_mean, 2)}°
+                                      {visualMetrics.structure_tensor?.orientation_spread_deg_regional_sd != null && (
+                                        <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                          ±{formatMetric(visualMetrics.structure_tensor.orientation_spread_deg_regional_sd, 2)}°
+                                        </span>
+                                      )}
+                                    </dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Coherence</dt>
+                                    <dd className="num font-semibold">
+                                      {formatMetric(visualMetrics.structure_tensor?.structure_tensor_mean_coherence, 4)}
+                                    </dd>
+                                  </div>
+                                </dl>
+                                <p className="text-[10px] text-slate-400 italic mt-2.5 pt-1.5 border-t border-slate-100">
+                                  Axial circular statistics · Fiber direction consistency
+                                </p>
+                              </section>
+
+                              {/* Directional Pattern (Gabor) */}
+                              <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-0.5">
+                                  Directional Pattern
+                                </h3>
+                                <p className="text-[10px] text-slate-400 mb-2">
+                                  Gabor Filter Bank (6 orientations)
+                                </p>
+                                <dl className="space-y-1.5 text-xs">
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Anisotropy</dt>
+                                    <dd className="num font-semibold">
+                                      {formatMetric(visualMetrics.gabor?.gabor_response_anisotropy, 4)}
+                                    </dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Mean Response</dt>
+                                    <dd className="num font-semibold">
+                                      {formatMetric(visualMetrics.gabor?.gabor_mean_response, 4)}
+                                    </dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-slate-500">Dominant Filter</dt>
+                                    <dd className="num font-semibold">
+                                      {visualMetrics.gabor?.gabor_dominant_filter_angle_deg != null ? `${visualMetrics.gabor.gabor_dominant_filter_angle_deg}°` : "—"}
+                                    </dd>
+                                  </div>
+                                </dl>
+                                <p className="text-[10px] text-slate-400 italic mt-2.5 pt-1.5 border-t border-slate-100">
+                                  Directional response selectivity
+                                </p>
+                              </section>
+                            </div>
+
+                            <p className="text-[10px] text-slate-400 italic text-center">
+                              Texture measurements describe visible arrangement and grayscale patterns · Not physical tactile hand
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="mt-3 p-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 text-center">

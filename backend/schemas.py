@@ -27,8 +27,14 @@ class ClassifyResponse(BaseModel):
 
     moisture: float = Field(..., example=11.0)
 
-    # NEW: Color and texture measurements
+    # Color and texture measurements
     visual_metrics: Optional[Dict[str, Any]] = None
+
+    # Candidate color reference comparison (PNS/BAFS 318:2021)
+    color_analysis: Optional[Dict[str, Any]] = None
+
+    # Experimental texture threshold assessment
+    texture_analysis: Optional[Dict[str, Any]] = None
 
     timestamp: str = Field(..., example="2026-10-10T08:00:00.000Z")
     status: str = Field("completed", example="completed")

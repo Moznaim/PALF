@@ -1,0 +1,313 @@
+{
+  "version": "1.0",
+  "description": "Candidate texture threshold rules derived from 54 inspector-labeled PALF specimens (PNS/BAFS 318:2021 Table 3 alignment)",
+  "disclaimer": "Experimental candidate reference comparison \u00b7 Does not determine or alter deep learning model classification",
+  "class_definitions": {
+    "0": {
+      "texture_label": "soft",
+      "display_name": "Soft",
+      "associated_grade": "Excellent",
+      "pns_code": "PID-1"
+    },
+    "1": {
+      "texture_label": "medium_soft",
+      "display_name": "Medium-soft",
+      "associated_grade": "Good",
+      "pns_code": "PID-2"
+    },
+    "2": {
+      "texture_label": "medium_coarse",
+      "display_name": "Medium-coarse",
+      "associated_grade": "Fair",
+      "pns_code": "PID-3 / PID-4"
+    }
+  },
+  "primary_rule": "orientation_spread_deg_regional_mean",
+  "fallback_rule": "orientation_spread_deg",
+  "feature_rules": {
+    "orientation_concentration": {
+      "raw_rules": "|--- orientation_concentration <= 0.733543\n|   |--- orientation_concentration <= 0.624601\n|   |   |--- class: 1\n|   |--- orientation_concentration >  0.624601\n|   |   |--- class: 2\n|--- orientation_concentration >  0.733543\n|   |--- class: 0\n",
+      "cv_balanced_accuracy": 0.711111111111111,
+      "cv_macro_f1": 0.6816402116402116,
+      "candidate_meta": {
+        "splits": [
+          0.62460062,
+          0.73354322
+        ],
+        "number_of_splits": 2,
+        "cv_balanced_accuracy": 0.711111111111111,
+        "cv_macro_f1": 0.6816402116402116,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "structure_tensor_mean_coherence": {
+      "raw_rules": "|--- structure_tensor_mean_coherence <= 0.722747\n|   |--- structure_tensor_mean_coherence <= 0.697526\n|   |   |--- class: 1\n|   |--- structure_tensor_mean_coherence >  0.697526\n|   |   |--- class: 1\n|--- structure_tensor_mean_coherence >  0.722747\n|   |--- structure_tensor_mean_coherence <= 0.778091\n|   |   |--- class: 2\n|   |--- structure_tensor_mean_coherence >  0.778091\n|   |   |--- class: 0\n",
+      "cv_balanced_accuracy": 0.6166666666666666,
+      "cv_macro_f1": 0.5729833129833128,
+      "candidate_meta": {
+        "splits": [
+          0.69752604,
+          0.72274745,
+          0.77809149
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.6166666666666666,
+        "cv_macro_f1": 0.5729833129833128,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "orientation_spread_deg": {
+      "raw_rules": "|--- orientation_spread_deg <= 22.552517\n|   |--- class: 0\n|--- orientation_spread_deg >  22.552517\n|   |--- orientation_spread_deg <= 27.794097\n|   |   |--- class: 2\n|   |--- orientation_spread_deg >  27.794097\n|   |   |--- class: 1\n",
+      "cv_balanced_accuracy": 0.711111111111111,
+      "cv_macro_f1": 0.6816402116402116,
+      "candidate_meta": {
+        "splits": [
+          22.552517,
+          27.794097
+        ],
+        "number_of_splits": 2,
+        "cv_balanced_accuracy": 0.711111111111111,
+        "cv_macro_f1": 0.6816402116402116,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "gabor_response_anisotropy": {
+      "raw_rules": "|--- gabor_response_anisotropy <= 0.454447\n|   |--- gabor_response_anisotropy <= 0.379614\n|   |   |--- class: 1\n|   |--- gabor_response_anisotropy >  0.379614\n|   |   |--- class: 1\n|--- gabor_response_anisotropy >  0.454447\n|   |--- gabor_response_anisotropy <= 0.545935\n|   |   |--- class: 2\n|   |--- gabor_response_anisotropy >  0.545935\n|   |   |--- class: 0\n",
+      "cv_balanced_accuracy": 0.7111111111111111,
+      "cv_macro_f1": 0.7014959114959114,
+      "candidate_meta": {
+        "splits": [
+          0.37961376,
+          0.45444727,
+          0.54593515
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.7111111111111111,
+        "cv_macro_f1": 0.7014959114959114,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "gabor_mean_response": {
+      "raw_rules": "|--- gabor_mean_response <= 0.112107\n|   |--- class: 1\n|--- gabor_mean_response >  0.112107\n|   |--- gabor_mean_response <= 0.123267\n|   |   |--- class: 0\n|   |--- gabor_mean_response >  0.123267\n|   |   |--- class: 2\n",
+      "cv_balanced_accuracy": 0.3666666666666667,
+      "cv_macro_f1": 0.31956228956228955,
+      "candidate_meta": {
+        "splits": [
+          0.11210701,
+          0.12326667
+        ],
+        "number_of_splits": 2,
+        "cv_balanced_accuracy": 0.3666666666666667,
+        "cv_macro_f1": 0.31956228956228955,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "mean_gradient_magnitude": {
+      "raw_rules": "|--- mean_gradient_magnitude <= 0.242346\n|   |--- mean_gradient_magnitude <= 0.197872\n|   |   |--- class: 1\n|   |--- mean_gradient_magnitude >  0.197872\n|   |   |--- class: 2\n|--- mean_gradient_magnitude >  0.242346\n|   |--- mean_gradient_magnitude <= 0.254147\n|   |   |--- class: 0\n|   |--- mean_gradient_magnitude >  0.254147\n|   |   |--- class: 0\n",
+      "cv_balanced_accuracy": 0.39444444444444443,
+      "cv_macro_f1": 0.3314285714285714,
+      "candidate_meta": {
+        "splits": [
+          0.19787239,
+          0.24234569,
+          0.25414725
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.39444444444444443,
+        "cv_macro_f1": 0.3314285714285714,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "edge_density_pct": {
+      "raw_rules": "|--- edge_density_pct <= 16.446165\n|   |--- edge_density_pct <= 14.107103\n|   |   |--- class: 2\n|   |--- edge_density_pct >  14.107103\n|   |   |--- class: 2\n|--- edge_density_pct >  16.446165\n|   |--- edge_density_pct <= 17.238246\n|   |   |--- class: 1\n|   |--- edge_density_pct >  17.238246\n|   |   |--- class: 0\n",
+      "cv_balanced_accuracy": 0.5111111111111111,
+      "cv_macro_f1": 0.47259259259259256,
+      "candidate_meta": {
+        "splits": [
+          14.107103,
+          16.446165,
+          17.238246
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.5111111111111111,
+        "cv_macro_f1": 0.47259259259259256,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "glcm_contrast": {
+      "raw_rules": "|--- glcm_contrast <= 0.858862\n|   |--- glcm_contrast <= 0.637557\n|   |   |--- class: 2\n|   |--- glcm_contrast >  0.637557\n|   |   |--- class: 2\n|--- glcm_contrast >  0.858862\n|   |--- glcm_contrast <= 0.947443\n|   |   |--- class: 0\n|   |--- glcm_contrast >  0.947443\n|   |   |--- class: 0\n",
+      "cv_balanced_accuracy": 0.4666666666666667,
+      "cv_macro_f1": 0.3938287638287638,
+      "candidate_meta": {
+        "splits": [
+          0.63755739,
+          0.85886171,
+          0.94744253
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.4666666666666667,
+        "cv_macro_f1": 0.3938287638287638,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "glcm_homogeneity": {
+      "raw_rules": "|--- glcm_homogeneity <= 0.776887\n|   |--- glcm_homogeneity <= 0.737944\n|   |   |--- class: 1\n|   |--- glcm_homogeneity >  0.737944\n|   |   |--- class: 0\n|--- glcm_homogeneity >  0.776887\n|   |--- glcm_homogeneity <= 0.793758\n|   |   |--- class: 1\n|   |--- glcm_homogeneity >  0.793758\n|   |   |--- class: 2\n",
+      "cv_balanced_accuracy": 0.5277777777777778,
+      "cv_macro_f1": 0.4897883597883598,
+      "candidate_meta": {
+        "splits": [
+          0.73794368,
+          0.77688718,
+          0.79375759
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.5277777777777778,
+        "cv_macro_f1": 0.4897883597883598,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "glcm_entropy": {
+      "raw_rules": "|--- glcm_entropy <= 4.499673\n|   |--- glcm_entropy <= 4.412372\n|   |   |--- class: 2\n|   |--- glcm_entropy >  4.412372\n|   |   |--- class: 2\n|--- glcm_entropy >  4.499673\n|   |--- glcm_entropy <= 4.560895\n|   |   |--- class: 0\n|   |--- glcm_entropy >  4.560895\n|   |   |--- class: 1\n",
+      "cv_balanced_accuracy": 0.40555555555555556,
+      "cv_macro_f1": 0.3495238095238095,
+      "candidate_meta": {
+        "splits": [
+          4.4123719,
+          4.4996734,
+          4.5608952
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.40555555555555556,
+        "cv_macro_f1": 0.3495238095238095,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "glcm_asm": {
+      "raw_rules": "|--- glcm_asm <= 0.082227\n|   |--- glcm_asm <= 0.059973\n|   |   |--- class: 1\n|   |--- glcm_asm >  0.059973\n|   |   |--- class: 0\n|--- glcm_asm >  0.082227\n|   |--- glcm_asm <= 0.092999\n|   |   |--- class: 2\n|   |--- glcm_asm >  0.092999\n|   |   |--- class: 2\n",
+      "cv_balanced_accuracy": 0.5055555555555555,
+      "cv_macro_f1": 0.4674074074074074,
+      "candidate_meta": {
+        "splits": [
+          0.05997288,
+          0.082227059,
+          0.092999492
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.5055555555555555,
+        "cv_macro_f1": 0.4674074074074074,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "glcm_energy": {
+      "raw_rules": "|--- glcm_energy <= 0.286751\n|   |--- glcm_energy <= 0.244887\n|   |   |--- class: 1\n|   |--- glcm_energy >  0.244887\n|   |   |--- class: 0\n|--- glcm_energy >  0.286751\n|   |--- glcm_energy <= 0.304957\n|   |   |--- class: 2\n|   |--- glcm_energy >  0.304957\n|   |   |--- class: 2\n",
+      "cv_balanced_accuracy": 0.5055555555555555,
+      "cv_macro_f1": 0.4674074074074074,
+      "candidate_meta": {
+        "splits": [
+          0.24488712,
+          0.28675136,
+          0.3049572
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.5055555555555555,
+        "cv_macro_f1": 0.4674074074074074,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "structure_tensor_mean_coherence_regional_mean": {
+      "raw_rules": "|--- structure_tensor_mean_coherence_regional_mean <= 0.715119\n|   |--- structure_tensor_mean_coherence_regional_mean <= 0.697124\n|   |   |--- class: 1\n|   |--- structure_tensor_mean_coherence_regional_mean >  0.697124\n|   |   |--- class: 1\n|--- structure_tensor_mean_coherence_regional_mean >  0.715119\n|   |--- structure_tensor_mean_coherence_regional_mean <= 0.770190\n|   |   |--- class: 2\n|   |--- structure_tensor_mean_coherence_regional_mean >  0.770190\n|   |   |--- class: 0\n",
+      "cv_balanced_accuracy": 0.6388888888888888,
+      "cv_macro_f1": 0.5915018315018313,
+      "candidate_meta": {
+        "splits": [
+          0.69712359,
+          0.71511909,
+          0.77019012
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.6388888888888888,
+        "cv_macro_f1": 0.5915018315018313,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "structure_tensor_mean_coherence_regional_sd": {
+      "raw_rules": "|--- structure_tensor_mean_coherence_regional_sd <= 0.032582\n|   |--- class: 0\n|--- structure_tensor_mean_coherence_regional_sd >  0.032582\n|   |--- structure_tensor_mean_coherence_regional_sd <= 0.050653\n|   |   |--- class: 1\n|   |--- structure_tensor_mean_coherence_regional_sd >  0.050653\n|   |   |--- class: 2\n",
+      "cv_balanced_accuracy": 0.2833333333333333,
+      "cv_macro_f1": 0.24260702260702258,
+      "candidate_meta": {
+        "splits": [
+          0.032582054,
+          0.050652523
+        ],
+        "number_of_splits": 2,
+        "cv_balanced_accuracy": 0.2833333333333333,
+        "cv_macro_f1": 0.24260702260702258,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "orientation_concentration_regional_mean": {
+      "raw_rules": "|--- orientation_concentration_regional_mean <= 0.710728\n|   |--- orientation_concentration_regional_mean <= 0.639193\n|   |   |--- class: 1\n|   |--- orientation_concentration_regional_mean >  0.639193\n|   |   |--- class: 2\n|--- orientation_concentration_regional_mean >  0.710728\n|   |--- orientation_concentration_regional_mean <= 0.735771\n|   |   |--- class: 0\n|   |--- orientation_concentration_regional_mean >  0.735771\n|   |   |--- class: 0\n",
+      "cv_balanced_accuracy": 0.75,
+      "cv_macro_f1": 0.7355555555555555,
+      "candidate_meta": {
+        "splits": [
+          0.63919339,
+          0.71072766,
+          0.73577079
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.75,
+        "cv_macro_f1": 0.7355555555555555,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "orientation_concentration_regional_sd": {
+      "raw_rules": "|--- orientation_concentration_regional_sd <= 0.108893\n|   |--- orientation_concentration_regional_sd <= 0.093121\n|   |   |--- class: 0\n|   |--- orientation_concentration_regional_sd >  0.093121\n|   |   |--- class: 0\n|--- orientation_concentration_regional_sd >  0.108893\n|   |--- orientation_concentration_regional_sd <= 0.135415\n|   |   |--- class: 2\n|   |--- orientation_concentration_regional_sd >  0.135415\n|   |   |--- class: 1\n",
+      "cv_balanced_accuracy": 0.5277777777777778,
+      "cv_macro_f1": 0.4814814814814815,
+      "candidate_meta": {
+        "splits": [
+          0.093121473,
+          0.10889323,
+          0.13541463
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.5277777777777778,
+        "cv_macro_f1": 0.4814814814814815,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "orientation_spread_deg_regional_mean": {
+      "raw_rules": "|--- orientation_spread_deg_regional_mean <= 23.455670\n|   |--- orientation_spread_deg_regional_mean <= 22.235450\n|   |   |--- class: 0\n|   |--- orientation_spread_deg_regional_mean >  22.235450\n|   |   |--- class: 0\n|--- orientation_spread_deg_regional_mean >  23.455670\n|   |--- orientation_spread_deg_regional_mean <= 27.049147\n|   |   |--- class: 2\n|   |--- orientation_spread_deg_regional_mean >  27.049147\n|   |   |--- class: 1\n",
+      "cv_balanced_accuracy": 0.75,
+      "cv_macro_f1": 0.7355555555555555,
+      "candidate_meta": {
+        "splits": [
+          22.23545,
+          23.45567,
+          27.049147
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.75,
+        "cv_macro_f1": 0.7355555555555555,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    },
+    "orientation_spread_deg_regional_sd": {
+      "raw_rules": "|--- orientation_spread_deg_regional_sd <= 5.293975\n|   |--- orientation_spread_deg_regional_sd <= 4.506702\n|   |   |--- class: 0\n|   |--- orientation_spread_deg_regional_sd >  4.506702\n|   |   |--- class: 0\n|--- orientation_spread_deg_regional_sd >  5.293975\n|   |--- orientation_spread_deg_regional_sd <= 5.612041\n|   |   |--- class: 1\n|   |--- orientation_spread_deg_regional_sd >  5.612041\n|   |   |--- class: 2\n",
+      "cv_balanced_accuracy": 0.5388888888888889,
+      "cv_macro_f1": 0.4888792688792688,
+      "candidate_meta": {
+        "splits": [
+          4.5067019,
+          5.2939754,
+          5.6120415
+        ],
+        "number_of_splits": 3,
+        "cv_balanced_accuracy": 0.5388888888888889,
+        "cv_macro_f1": 0.4888792688792688,
+        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      }
+    }
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "version": "1.0.0",
+  "threshold_status": "candidate_unvalidated",
+  "source": "palf_six_reference_candidate_thresholds_masked_p05_p95.csv",
+  "provenance_note": "Preliminary candidate color references extracted from reference images. Proof-of-concept only. Not official PNS/BAFS 318:2021 numerical thresholds.",
+  "pns_standard": "PNS/BAFS 318:2021",
+  "color_spaces": {
+    "RGB": "8-bit RGB channels [0, 255]",
+    "CIELAB": "OpenCV float32 RGB-to-Lab; L* in [0, 100], a* in [-128, 127], b* in [-128, 127]"
+  },
+  "references": [
+    {
+      "reference_key": "excellent_light_ivory",
+      "quality": "Excellent",
+      "pns_pid": "PID-1",
+      "color_label": "Light ivory",
+      "pns_description": "Light ivory to almost white",
+      "source_image": "Excellent_light ivory.jpg",
+      "threshold_status": "candidate_unvalidated",
+      "rgb": {
+        "R": {"p05": 115.0, "median": 182.0, "p95": 215.0, "min": 0.0, "max": 255.0},
+        "G": {"p05": 116.0, "median": 193.0, "p95": 230.0, "min": 0.0, "max": 255.0},
+        "B": {"p05": 119.0, "median": 207.0, "p95": 249.0, "min": 0.0, "max": 255.0}
+      },
+      "cielab": {
+        "L_star": {"p05": 48.87085, "median": 77.471924, "p95": 90.551758, "min": 0.0, "max": 100.0},
+        "a_star": {"p05": -2.609375, "median": -1.0, "p95": 1.34375, "min": -10.78125, "max": 9.28125},
+        "b_star": {"p05": -13.0, "median": -8.375, "p95": 1.140625, "min": -22.984375, "max": 16.75}
+      }
+    },
+    {
+      "reference_key": "excellent_white",
+      "quality": "Excellent",
+      "pns_pid": "PID-1",
+      "color_label": "Almost white",
+      "pns_description": "Light ivory to almost white",
+      "source_image": "excellent_white.jpg",
+      "threshold_status": "candidate_unvalidated",
+      "rgb": {
+        "R": {"p05": 119.0, "median": 186.0, "p95": 214.0, "min": 0.0, "max": 255.0},
+        "G": {"p05": 120.0, "median": 200.0, "p95": 231.0, "min": 0.0, "max": 255.0},
+        "B": {"p05": 124.0, "median": 219.0, "p95": 251.0, "min": 0.0, "max": 255.0}
+      },
+      "cielab": {
+        "L_star": {"p05": 50.305176, "median": 79.992676, "p95": 90.765381, "min": 0.0, "max": 100.0},
+        "a_star": {"p05": -2.171875, "median": -0.796875, "p95": 1.5, "min": -10.15625, "max": 8.640625},
+        "b_star": {"p05": -13.734375, "median": -10.5625, "p95": 0.28125, "min": -18.96875, "max": 17.0625}
+      }
+    },
+    {
+      "reference_key": "good_ivory",
+      "quality": "Good",
+      "pns_pid": "PID-2",
+      "color_label": "Light ivory",
+      "pns_description": "Light ivory to light ochre",
+      "source_image": "good_ivory.jpg",
+      "threshold_status": "candidate_unvalidated",
+      "rgb": {
+        "R": {"p05": 121.0, "median": 177.0, "p95": 215.0, "min": 0.0, "max": 255.0},
+        "G": {"p05": 126.0, "median": 189.0, "p95": 230.0, "min": 0.0, "max": 255.0},
+        "B": {"p05": 129.0, "median": 203.0, "p95": 248.0, "min": 5.0, "max": 255.0}
+      },
+      "cielab": {
+        "L_star": {"p05": 52.67334, "median": 76.086426, "p95": 90.533447, "min": 0.097656, "max": 100.0},
+        "a_star": {"p05": -2.9375, "median": -1.296875, "p95": 0.5, "min": -8.625, "max": 7.921875},
+        "b_star": {"p05": -12.5, "median": -8.234375, "p95": 1.15625, "min": -19.28125, "max": 21.1875}
+      }
+    },
+    {
+      "reference_key": "good_light_ochre",
+      "quality": "Good",
+      "pns_pid": "PID-2",
+      "color_label": "Light ochre",
+      "pns_description": "Light ivory to light ochre",
+      "source_image": "Good_light ochre.jpg",
+      "threshold_status": "candidate_unvalidated",
+      "rgb": {
+        "R": {"p05": 120.0, "median": 177.0, "p95": 209.0, "min": 0.0, "max": 255.0},
+        "G": {"p05": 125.0, "median": 190.0, "p95": 226.0, "min": 3.0, "max": 255.0},
+        "B": {"p05": 127.0, "median": 204.0, "p95": 245.0, "min": 7.0, "max": 255.0}
+      },
+      "cielab": {
+        "L_star": {"p05": 51.879883, "median": 76.208496, "p95": 89.007568, "min": 1.116943, "max": 100.0},
+        "a_star": {"p05": -2.90625, "median": -1.546875, "p95": 0.4375, "min": -8.125, "max": 8.421875},
+        "b_star": {"p05": -12.671875, "median": -8.5625, "p95": 1.09375, "min": -17.21875, "max": 19.421875}
+      }
+    },
+    {
+      "reference_key": "fair_light_brown",
+      "quality": "Fair",
+      "pns_pid": "PID-3 / PID-4 boundary",
+      "color_label": "Light brown",
+      "pns_description": "PID-3 light-brown endpoint / PID-4 light-brown start point (shared boundary)",
+      "source_image": "Fair_light brown.jpg",
+      "threshold_status": "candidate_unvalidated",
+      "rgb": {
+        "R": {"p05": 117.0, "median": 187.0, "p95": 216.0, "min": 0.0, "max": 255.0},
+        "G": {"p05": 117.0, "median": 194.0, "p95": 225.0, "min": 0.0, "max": 255.0},
+        "B": {"p05": 114.0, "median": 199.0, "p95": 237.0, "min": 0.0, "max": 255.0}
+      },
+      "cielab": {
+        "L_star": {"p05": 49.01123, "median": 77.886963, "p95": 89.141846, "min": 0.061035, "max": 100.0},
+        "a_star": {"p05": -2.796875, "median": -1.140625, "p95": 1.28125, "min": -11.09375, "max": 19.59375},
+        "b_star": {"p05": -8.359375, "median": -3.59375, "p95": 5.0625, "min": -18.609375, "max": 35.0625}
+      }
+    },
+    {
+      "reference_key": "fair_dull_brown",
+      "quality": "Fair",
+      "pns_pid": "PID-4",
+      "color_label": "Dull brown",
+      "pns_description": "Light brown to dull brown",
+      "source_image": "Fair_dull brown.jpg",
+      "threshold_status": "candidate_unvalidated",
+      "rgb": {
+        "R": {"p05": 124.0, "median": 190.0, "p95": 216.0, "min": 3.0, "max": 255.0},
+        "G": {"p05": 125.0, "median": 198.0, "p95": 227.0, "min": 1.0, "max": 255.0},
+        "B": {"p05": 125.0, "median": 203.0, "p95": 238.0, "min": 0.0, "max": 255.0}
+      },
+      "cielab": {
+        "L_star": {"p05": 52.429199, "median": 79.205322, "p95": 89.398193, "min": 0.65918, "max": 100.0},
+        "a_star": {"p05": -3.015625, "median": -1.234375, "p95": 1.390625, "min": -10.984375, "max": 9.296875},
+        "b_star": {"p05": -8.625, "median": -4.15625, "p95": 3.359375, "min": -19.609375, "max": 34.546875}
+      }
+    }
+  ]
+}
+

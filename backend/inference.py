@@ -9,6 +9,8 @@ import torch.nn.functional as F
 
 import numpy as np
 from visual_metrics import extract_visual_metrics
+from color_analysis import analyze_color_references
+from texture_thresholds import evaluate_texture_thresholds
 
 from PIL import Image, UnidentifiedImageError
 from torchvision import transforms
@@ -222,8 +224,8 @@ def predict_fiber_grade(
             "No model is currently loaded. Check backend configuration."
         )
 
-    if not isinstance(moisture_pct, (int, float)):
-        raise ValueError("Moisture must be a valid numeric percentage.")
+    if not isinstance(moisture_pct, (int, float)) or not np.isfinite(moisture_pct) or not (0.0 <= moisture_pct <= 100.0):
+        raise ValueError(f"Moisture must be a finite numeric percentage between 0 and 100. Got: {moisture_pct}")
 
     # =====================================
     # 1. DECODE IMAGE
@@ -244,7 +246,7 @@ def predict_fiber_grade(
         )
 
     # =====================================
-    # 2. EXTRACT COLOR AND TEXTURE (INDEPENDENT PIPELINE)
+    # 2. EXTRACT COLOR, TEXTURE & CANDIDATE COLOR REFERENCES (INDEPENDENT PIPELINES)
     # =====================================
     try:
         visual_metrics = extract_visual_metrics(image)
@@ -253,11 +255,90 @@ def predict_fiber_grade(
         visual_metrics = {
             "status": "error",
             "error": str(e),
-            "method_version": "bundle_metrics_v1",
+            "method_version": "bundle_metrics_v3",
             "color": None,
             "texture": None,
             "uniformity": None,
             "image_quality": None,
+            "structure_tensor": None,
+            "gabor": None,
+            "edge_gradient": None,
+        }
+
+    try:
+        color_analysis = analyze_color_references(image)
+    except Exception as e:
+        logger.warning(f"Non-fatal error in candidate color analysis: {e}")
+        color_analysis = {
+            "status": "error",
+            "mode": "experimental_reference_comparison",
+            "threshold_status": "candidate_unvalidated",
+            "error": str(e),
+            "candidate_matches": [],
+            "warnings": [f"Color analysis error: {str(e)}"],
+        }
+
+    # =====================================
+    # 2b. EXPERIMENTAL TEXTURE THRESHOLD ASSESSMENT
+    # =====================================
+    try:
+        # Collect texture features from visual_metrics for threshold evaluation
+        texture_features = {}
+        st = visual_metrics.get("structure_tensor") or {}
+        gb = visual_metrics.get("gabor") or {}
+        tx = visual_metrics.get("texture") or {}
+        eg = visual_metrics.get("edge_gradient") or {}
+
+        for key in [
+            "orientation_concentration", "orientation_spread_deg",
+            "dominant_strand_orientation_deg", "structure_tensor_mean_coherence",
+            "orientation_concentration_regional_mean", "orientation_concentration_regional_sd",
+            "orientation_spread_deg_regional_mean", "orientation_spread_deg_regional_sd",
+            "structure_tensor_mean_coherence_regional_mean", "structure_tensor_mean_coherence_regional_sd",
+        ]:
+            if st.get(key) is not None:
+                texture_features[key] = st[key]
+
+        for key in [
+            "gabor_response_anisotropy", "gabor_mean_response",
+            "gabor_dominant_filter_angle_deg",
+            "gabor_response_0deg", "gabor_response_30deg",
+            "gabor_response_60deg", "gabor_response_90deg",
+            "gabor_response_120deg", "gabor_response_150deg",
+        ]:
+            if gb.get(key) is not None:
+                texture_features[key] = gb[key]
+
+        for key in ["contrast", "homogeneity", "asm", "energy", "entropy"]:
+            if tx.get(key) is not None:
+                texture_features[f"glcm_{key}"] = tx[key]
+
+        for key in ["edge_density_pct", "mean_gradient_magnitude"]:
+            if eg.get(key) is not None:
+                texture_features[key] = eg[key]
+
+        mask_coverage = visual_metrics.get("metadata", {}).get("mask_coverage_pct", 0.0)
+        valid_regions = st.get("valid_regions", 0)
+        lap_var = (visual_metrics.get("image_quality") or {}).get("laplacian_variance")
+
+        texture_analysis = evaluate_texture_thresholds(
+            features=texture_features,
+            mask_coverage_pct=mask_coverage,
+            valid_regions=valid_regions,
+            laplacian_variance=lap_var,
+        )
+    except Exception as e:
+        logger.warning(f"Non-fatal error in texture threshold evaluation: {e}")
+        texture_analysis = {
+            "status": "error",
+            "assessment_type": "experimental_threshold_based",
+            "predicted_texture": None,
+            "display_name": "Error",
+            "associated_grade": None,
+            "threshold_match": False,
+            "features": {},
+            "threshold_details": {"rule_id": None, "features_used": [], "decision_path": []},
+            "warnings": [f"Texture threshold evaluation error: {str(e)}"],
         }
 
     # =====================================
@@ -360,6 +441,12 @@ def predict_fiber_grade(
 
         # Color and texture measurements
         "visual_metrics": visual_metrics,
+
+        # Experimental candidate color reference comparison (PNS/BAFS 318:2021)
+        "color_analysis": color_analysis,
+
+        # Experimental texture threshold assessment
+        "texture_analysis": texture_analysis,
 
         "timestamp": timestamp,
         "status": "completed",

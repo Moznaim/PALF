@@ -176,9 +176,18 @@ def print_receipt_escpos(
             add_line(f"CIELAB: L*={color.get('l_star', 'N/A')} a*={color.get('a_star', 'N/A')} b*={color.get('b_star', 'N/A')}")
         if texture:
             add_line(f"GLCM: Cont={texture.get('contrast', 'N/A')} Hom={texture.get('homogeneity', 'N/A')}")
+            if texture.get("energy") is not None or texture.get("asm") is not None:
+                add_line(f"      Energy={texture.get('energy', 'N/A')} ASM={texture.get('asm', 'N/A')}")
         if uniformity and uniformity.get("valid_regions"):
             add_line(f"Uniformity: {uniformity.get('valid_regions')}/9 regions")
         add_line(separator)
+
+    ca = result.get("color_analysis") or result.get("colorAnalysis")
+    if isinstance(ca, dict) and ca.get("candidate_matches"):
+        c_names = [m.get("color_label") for m in ca["candidate_matches"] if m.get("is_candidate")]
+        if c_names:
+            add_line(f"Ref Color Match: {', '.join(c_names[:2])}")
+            add_line(separator)
 
     # Footer
     add_line(f"Model: {model_name}")
