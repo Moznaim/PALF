@@ -24,6 +24,22 @@
   },
   "primary_rule": "orientation_spread_deg_regional_mean",
   "fallback_rule": "orientation_spread_deg",
+
+  "rule_priority": [
+    {
+      "rule_id": "orientation_spread_deg_regional_mean",
+      "min_valid_regions": 3
+    },
+    {
+      "rule_id": "orientation_spread_deg",
+      "min_valid_regions": 0
+    },
+    {
+      "rule_id": "gabor_response_anisotropy",
+      "min_valid_regions": 0
+    }
+  ],
+
   "feature_rules": {
     "orientation_concentration": {
       "raw_rules": "|--- orientation_concentration <= 0.733543\n|   |--- orientation_concentration <= 0.624601\n|   |   |--- class: 1\n|   |--- orientation_concentration >  0.624601\n|   |   |--- class: 2\n|--- orientation_concentration >  0.733543\n|   |--- class: 0\n",
@@ -69,24 +85,50 @@
         "cv_balanced_accuracy": 0.711111111111111,
         "cv_macro_f1": 0.6816402116402116,
         "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      },
+      "decision_tree": {
+        "branches": [
+          {
+            "max_inclusive": 22.552517,
+            "class": 0
+          },
+          {
+            "max_inclusive": 27.794097,
+            "class": 2
+          }
+        ],
+        "default_class": 1
       }
     },
-    "gabor_response_anisotropy": {
-      "raw_rules": "|--- gabor_response_anisotropy <= 0.454447\n|   |--- gabor_response_anisotropy <= 0.379614\n|   |   |--- class: 1\n|   |--- gabor_response_anisotropy >  0.379614\n|   |   |--- class: 1\n|--- gabor_response_anisotropy >  0.454447\n|   |--- gabor_response_anisotropy <= 0.545935\n|   |   |--- class: 2\n|   |--- gabor_response_anisotropy >  0.545935\n|   |   |--- class: 0\n",
-      "cv_balanced_accuracy": 0.7111111111111111,
-      "cv_macro_f1": 0.7014959114959114,
-      "candidate_meta": {
-        "splits": [
-          0.37961376,
-          0.45444727,
-          0.54593515
-        ],
-        "number_of_splits": 3,
+      "gabor_response_anisotropy": {
+        "raw_rules": "|--- gabor_response_anisotropy <= 0.454447\n|   |--- gabor_response_anisotropy <= 0.379614\n|   |   |--- class: 1\n|   |--- gabor_response_anisotropy >  0.379614\n|   |   |--- class: 1\n|--- gabor_response_anisotropy >  0.454447\n|   |--- gabor_response_anisotropy <= 0.545935\n|   |   |--- class: 2\n|   |--- gabor_response_anisotropy >  0.545935\n|   |   |--- class: 0\n",
         "cv_balanced_accuracy": 0.7111111111111111,
         "cv_macro_f1": 0.7014959114959114,
-        "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
-      }
-    },
+        "candidate_meta": {
+          "splits": [
+            0.37961376,
+            0.45444727,
+            0.54593515
+          ],
+          "number_of_splits": 3,
+          "cv_balanced_accuracy": 0.7111111111111111,
+          "cv_macro_f1": 0.7014959114959114,
+          "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+        },
+        "decision_tree": {
+          "branches": [
+            {
+              "max_inclusive": 0.45444727,
+              "class": 1
+            },
+            {
+              "max_inclusive": 0.54593515,
+              "class": 2
+            }
+          ],
+          "default_class": 0
+        }
+      },
     "gabor_mean_response": {
       "raw_rules": "|--- gabor_mean_response <= 0.112107\n|   |--- class: 1\n|--- gabor_mean_response >  0.112107\n|   |--- gabor_mean_response <= 0.123267\n|   |   |--- class: 0\n|   |--- gabor_mean_response >  0.123267\n|   |   |--- class: 2\n",
       "cv_balanced_accuracy": 0.3666666666666667,
@@ -278,9 +320,6 @@
       }
     },
     "orientation_spread_deg_regional_mean": {
-      "raw_rules": "|--- orientation_spread_deg_regional_mean <= 23.455670\n|   |--- orientation_spread_deg_regional_mean <= 22.235450\n|   |   |--- class: 0\n|   |--- orientation_spread_deg_regional_mean >  22.235450\n|   |   |--- class: 0\n|--- orientation_spread_deg_regional_mean >  23.455670\n|   |--- orientation_spread_deg_regional_mean <= 27.049147\n|   |   |--- class: 2\n|   |--- orientation_spread_deg_regional_mean >  27.049147\n|   |   |--- class: 1\n",
-      "cv_balanced_accuracy": 0.75,
-      "cv_macro_f1": 0.7355555555555555,
       "candidate_meta": {
         "splits": [
           22.23545,
@@ -291,8 +330,21 @@
         "cv_balanced_accuracy": 0.75,
         "cv_macro_f1": 0.7355555555555555,
         "threshold_source": "Exploratory one-feature depth-2 tree fitted to all labeled rows"
+      },
+      "decision_tree": {
+        "branches": [
+          {
+            "max_inclusive": 23.45567,
+            "class": 0
+          },
+          {
+            "max_inclusive": 27.049147,
+            "class": 2
+          }
+        ],
+        "default_class": 1
       }
-    },
+      },
     "orientation_spread_deg_regional_sd": {
       "raw_rules": "|--- orientation_spread_deg_regional_sd <= 5.293975\n|   |--- orientation_spread_deg_regional_sd <= 4.506702\n|   |   |--- class: 0\n|   |--- orientation_spread_deg_regional_sd >  4.506702\n|   |   |--- class: 0\n|--- orientation_spread_deg_regional_sd >  5.293975\n|   |--- orientation_spread_deg_regional_sd <= 5.612041\n|   |   |--- class: 1\n|   |--- orientation_spread_deg_regional_sd >  5.612041\n|   |   |--- class: 2\n",
       "cv_balanced_accuracy": 0.5388888888888889,
