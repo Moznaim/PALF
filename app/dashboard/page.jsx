@@ -859,9 +859,8 @@ const sim = MODE.model === "MOCK";
                             </p>
                           </section>
                         </div>
-
                         {/* ── TEXTURE ANALYSIS (Experimental Threshold Assessment) ── */}
-                        {textureAnalysis && textureAnalysis.status !== "error" && (
+                        {textureAnalysis && (
                           <div className="mt-3 space-y-3">
                             <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
                               <p className="text-xs font-semibold text-slate-800 tracking-wide uppercase">
@@ -903,13 +902,49 @@ const sim = MODE.model === "MOCK";
                                       </dd>
                                     </div>
                                   )}
-                                  <div className="flex justify-between">
-                                    <dt className="text-slate-500">Rule Used</dt>
-                                    <dd className="font-mono text-slate-600 text-[10px] max-w-[180px] text-right truncate" title={textureAnalysis.threshold_details?.rule_id ?? ""}>
-                                      {textureAnalysis.threshold_details?.rule_id ?? "—"}
-                                    </dd>
-                                  </div>
-                                </dl>
+                                    <div className="flex justify-between">
+                                      <dt className="text-slate-500">Rule Used</dt>
+                                      <dd
+                                        className="font-mono text-slate-600 text-[10px] max-w-[180px] text-right truncate"
+                                        title={textureAnalysis.threshold_details?.rule_id ?? ""}
+                                      >
+                                        {textureAnalysis.threshold_details?.rule_id ?? "—"}
+                                      </dd>
+                                    </div>
+                                    </dl>
+
+                                    {/* Threshold Decision Path */}
+                                    {Array.isArray(textureAnalysis.threshold_details?.decision_path) &&
+                                      textureAnalysis.threshold_details.decision_path.length > 0 && (
+                                        <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                                          <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                                            Threshold Decision Path
+                                          </h4>
+
+                                          <ol className="mt-2 space-y-1.5 list-decimal list-inside">
+                                            {textureAnalysis.threshold_details.decision_path.map(
+                                              (step, index) => (
+                                                <li
+                                                  key={`${index}-${step}`}
+                                                  className="text-[11px] text-slate-600 leading-relaxed"
+                                                >
+                                                  {step}
+                                                </li>
+                                              )
+                                            )}
+                                          </ol>
+
+                                          {textureAnalysis.warnings?.some((warning) =>
+                                            warning.toLowerCase().includes("fallback rule")
+                                          ) && (
+                                            <p className="mt-2 text-[10px] text-amber-700">
+                                              A fallback rule was used because a higher-priority feature
+                                              was unavailable.
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+
                                 {/* CNN vs Texture disagreement notice */}
                                 {result?.grade && textureAnalysis.associated_grade &&
                                   result.grade !== textureAnalysis.associated_grade && (
@@ -924,7 +959,20 @@ const sim = MODE.model === "MOCK";
                                 </p>
                               </section>
                             )}
+                                {/* Unavailable Texture Assessment */}
+                                {textureAnalysis.status !== "available" && (
+                                  <section className="rounded-lg border border-amber-200 bg-amber-50 p-3 mt-3">
+                                    <h3 className="text-xs font-bold text-amber-800">
+                                      Texture Assessment Unavailable
+                                    </h3>
 
+                                    <p className="mt-1 text-[11px] text-amber-700">
+                                      {textureAnalysis.warnings?.[0] ??
+                                        textureAnalysis.threshold_details?.decision_path?.[0] ??
+                                        "Texture measurements could not be evaluated."}
+                                    </p>
+                                  </section>
+                                )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               {/* Fiber Orientation */}
                               <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
